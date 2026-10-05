@@ -1,0 +1,9 @@
+prefix: "<gray>[<gold>Atlas</gold>] "
+
+player:
+  welcome: "<green>Bienvenue <yellow><player></yellow> sur Atlas !"
+
+common:
+  no-permission: "<prefix><red>Tu n'as pas la permission."
+  error: "<prefix><red>Une erreur est survenue."
+  player-only: "<prefix><red>Cette commande est réservée aux joueurs."

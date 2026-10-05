@@ -1,0 +1,10 @@
+server:
+  name: Atlas Test
+  max-players: 100
+
+database:
+  host: "localhost"
+  port: 3306
+  name: "atlas"
+  username: "root"
+  password: ""
