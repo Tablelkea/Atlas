@@ -118,7 +118,7 @@ public class DefaultPlayerDataService implements PlayerDataService {
         return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
     }
 
-    CompletableFuture<Void> flushAll() {
+    public CompletableFuture<Void> flushAll() {
 
         List<CompletableFuture<Void>> futures = new ArrayList<>();
 
