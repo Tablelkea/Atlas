@@ -1,6 +1,7 @@
 package com.veloriastudio.atlas.internal.command;
 
 import com.mojang.brigadier.arguments.ArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.veloriastudio.atlas.api.command.CommandArguments;
 import com.veloriastudio.atlas.api.command.CommandSuggestionProvider;
 
@@ -10,6 +11,7 @@ final class DefaultCommandArguments implements CommandArguments {
 
     private DefaultCommandBuilder current;
     private boolean hasArgument;
+    private DefaultCommandBuilder optionalExecutionNode;
 
     DefaultCommandArguments(DefaultCommandBuilder root) {
         this.current = Objects.requireNonNull(root, "root cannot be null");
@@ -17,12 +19,7 @@ final class DefaultCommandArguments implements CommandArguments {
 
     @Override
     public <T> CommandArguments argument(String name, ArgumentType<T> type) {
-
-        current = current.addArgument(name, type);
-
-        hasArgument = true;
-
-        return this;
+        return argument(name, type, false);
     }
 
     @Override
@@ -39,8 +36,29 @@ final class DefaultCommandArguments implements CommandArguments {
         return this;
     }
 
+    private <T> CommandArguments argument(String name, ArgumentType<T> type, boolean optional) {
+        if (optional) {
+            optionalExecutionNode = current;
+        }
+
+        current = current.addArgument(name, type, optional);
+
+        hasArgument = true;
+
+        return this;
+    }
+
+    @Override
+    public CommandArguments optionalGreedyString(String name) {
+        return argument(name, StringArgumentType.greedyString(), true);
+    }
+
     DefaultCommandBuilder terminal() {
         return current;
+    }
+
+    DefaultCommandBuilder optionalExecutionNode() {
+        return optionalExecutionNode;
     }
 
 

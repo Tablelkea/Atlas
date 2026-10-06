@@ -8,6 +8,8 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.util.Objects;
+import java.util.Optional;
+
 final class DefaultCommandContext implements CommandContext {
 
     private final com.mojang.brigadier.context.CommandContext<CommandSourceStack> context;
@@ -76,5 +78,14 @@ final class DefaultCommandContext implements CommandContext {
         throw new IllegalStateException(
                 "command sender is not a player"
         );
+    }
+
+    @Override
+    public Optional<String> optionalString(String name) {
+        try {
+            return Optional.of(context.getArgument(name, String.class));
+        } catch (IllegalArgumentException exception) {
+            return Optional.empty();
+        }
     }
 }

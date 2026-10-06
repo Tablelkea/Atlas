@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
-final class MySqlStoredCustomItemStorage
+public final class MySqlStoredCustomItemStorage
         implements StoredCustomItemStorage {
 
     private static final String UPSERT_SQL = """

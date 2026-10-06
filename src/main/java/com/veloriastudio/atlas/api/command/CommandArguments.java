@@ -111,4 +111,6 @@ public interface CommandArguments {
                 ArgumentTypes.player()
         );
     }
+
+    CommandArguments optionalGreedyString(String name);
 }

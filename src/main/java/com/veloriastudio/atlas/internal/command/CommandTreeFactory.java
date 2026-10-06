@@ -56,9 +56,13 @@ final class CommandTreeFactory {
 
         command.arguments(arguments);
 
-        arguments.terminal().executor(
-                command::execute
-        );
+        InternalCommandExecutor executor = context -> command.execute(context);
+
+        arguments.terminal().executor(executor);
+
+        if (arguments.optionalExecutionNode() != null) {
+            arguments.optionalExecutionNode().executor(executor);
+        }
 
         configureSubcommands(
                 command.getClass(),

@@ -4,6 +4,8 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.util.Optional;
+
 public interface CommandContext {
 
     CommandSender sender();
@@ -29,4 +31,6 @@ public interface CommandContext {
     Player player(String name) throws CommandSyntaxException;
 
     Player player();
+
+    Optional<String> optionalString(String name);
 }

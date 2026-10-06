@@ -4,7 +4,6 @@ import com.mojang.brigadier.arguments.ArgumentType;
 
 record DefaultArgumentNode(
         String name,
-        ArgumentType<?> type,
-        DefaultCommandBuilder builder
+        ArgumentType<?> type, DefaultCommandBuilder builder, boolean optional
 ) {
 }

@@ -3,12 +3,7 @@ package com.veloriastudio.atlas.internal.command;
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.veloriastudio.atlas.api.command.CommandSuggestionProvider;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 final class DefaultCommandBuilder {
 
@@ -86,9 +81,7 @@ final class DefaultCommandBuilder {
         );
     }
 
-    DefaultCommandBuilder addArgument(
-            String name,
-            ArgumentType<?> type
+    DefaultCommandBuilder addArgument(String name, ArgumentType<?> type, boolean optional
     ) {
 
         validateChild(name);
@@ -103,12 +96,7 @@ final class DefaultCommandBuilder {
 
         inheritTo(child);
 
-        arguments.put(
-                name,
-                new DefaultArgumentNode(
-                        name,
-                        type,
-                        child
+        arguments.put(name, new DefaultArgumentNode(name, type, child, optional
                 )
         );
 

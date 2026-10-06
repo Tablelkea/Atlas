@@ -2,6 +2,7 @@ package com.veloriastudio.atlas.api.item;
 
 import com.veloriastudio.atlas.api.pdc.PdcKey;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemFlag;
@@ -47,8 +48,7 @@ public final class ItemBuilder {
                 "name cannot be null"
         );
 
-        itemStack.editMeta(meta ->
-                meta.customName(name)
+        itemStack.editMeta(meta -> meta.customName(name.decoration(TextDecoration.ITALIC, false))
         );
 
         return this;
@@ -61,8 +61,9 @@ public final class ItemBuilder {
                 "lore cannot be null"
         );
 
-        itemStack.editMeta(meta ->
-                meta.lore(List.copyOf(lore))
+        List<Component> normalizedLore = lore.stream().map(component -> component.decoration(TextDecoration.ITALIC, false)).toList();
+
+        itemStack.editMeta(meta -> meta.lore(List.copyOf(normalizedLore))
         );
 
         return this;

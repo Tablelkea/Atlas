@@ -12,6 +12,7 @@ import com.veloriastudio.atlas.api.message.LocalizedMessages;
 import com.veloriastudio.atlas.api.message.MessageBundleService;
 import com.veloriastudio.atlas.api.message.MessageService;
 import com.veloriastudio.atlas.internal.command.DefaultCommandService;
+import com.veloriastudio.atlas.internal.command.MuseumCommand;
 import com.veloriastudio.atlas.internal.command.PaperCommandRegistrar;
 import com.veloriastudio.atlas.internal.command.item.CreateDynamicItemCommand;
 import com.veloriastudio.atlas.internal.config.DefaultConfigService;
@@ -25,9 +26,11 @@ import com.veloriastudio.atlas.internal.database.DefaultDatabaseService;
 import com.veloriastudio.atlas.internal.database.migration.CreateCustomItemsTableMigration;
 import com.veloriastudio.atlas.internal.database.migration.CreatePlayerDataTableMigration;
 import com.veloriastudio.atlas.internal.database.migration.DatabaseMigrationRunner;
+import com.veloriastudio.atlas.internal.gui.AtlasGuiListener;
 import com.veloriastudio.atlas.internal.item.DefaultCustomItemRegistry;
 import com.veloriastudio.atlas.internal.item.DefaultDynamicCustomItemService;
 import com.veloriastudio.atlas.internal.item.dialog.CustomItemCreationDialog;
+import com.veloriastudio.atlas.internal.item.museum.CustomItemMuseum;
 import com.veloriastudio.atlas.internal.item.persistence.StoredCustomItemPersistenceService;
 import com.veloriastudio.atlas.internal.message.DefaultLocalizedMessages;
 import com.veloriastudio.atlas.internal.message.DefaultMessageBundleService;
@@ -54,6 +57,7 @@ public final class AtlasPlugin extends JavaPlugin {
     private CommandService commandService;
     private CustomItemRegistry customItemRegistry;
     private DynamicCustomItemService dynamicCustomItemService;
+    private CustomItemMuseum customItemMuseum;
 
     @Override
     public void onEnable() {
@@ -67,6 +71,7 @@ public final class AtlasPlugin extends JavaPlugin {
         initializePlayerData(database);
         initializeMessages();
         initializeItems(database);
+        initializeListeners();
         initializeCommands();
 
         getLogger().info("Atlas has been enabled!");
@@ -257,6 +262,12 @@ public final class AtlasPlugin extends JavaPlugin {
                         itemCreationDialog
                 )
         );
+
+        commandService.register(this, new MuseumCommand(customItemMuseum, customItemRegistry));
+    }
+
+    public void initializeListeners() {
+        getServer().getPluginManager().registerEvents(new AtlasGuiListener(), this);
     }
 
     private void initializeItems(Database database) {
@@ -269,6 +280,7 @@ public final class AtlasPlugin extends JavaPlugin {
 
         this.dynamicCustomItemService = dynamicItems;
 
+        this.customItemMuseum = new CustomItemMuseum(customItemRegistry, dynamicCustomItemService, this);
         try {
             dynamicItems.loadStoredItems().join();
 
