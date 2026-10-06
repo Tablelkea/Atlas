@@ -7,3 +7,9 @@ common:
   no-permission: "<prefix><red>You don't have permission."
   error: "<prefix><red>An error occurred."
   player-only: "<prefix><red>This command is reserved for players."
+
+command:
+  help:
+    header: "<prefix><gold>Help for /<command></gold>"
+    entry: "<gray>• <yellow>/<usage></yellow> <dark_gray>-</dark_gray> <white><description></white>"
+    empty: "<prefix><gray>No commands available."

@@ -1,5 +1,6 @@
 package com.veloriastudio.atlas;
 
+import com.veloriastudio.atlas.api.command.CommandService;
 import com.veloriastudio.atlas.api.config.Config;
 import com.veloriastudio.atlas.api.config.ConfigService;
 import com.veloriastudio.atlas.api.database.Database;
@@ -8,6 +9,8 @@ import com.veloriastudio.atlas.api.database.MySqlConfig;
 import com.veloriastudio.atlas.api.message.LocalizedMessages;
 import com.veloriastudio.atlas.api.message.MessageBundleService;
 import com.veloriastudio.atlas.api.message.MessageService;
+import com.veloriastudio.atlas.internal.command.DefaultCommandService;
+import com.veloriastudio.atlas.internal.command.PaperCommandRegistrar;
 import com.veloriastudio.atlas.internal.config.DefaultConfigService;
 import com.veloriastudio.atlas.internal.data.DefaultPlayerDataService;
 import com.veloriastudio.atlas.internal.data.PlayerDataKeyStore;
@@ -40,6 +43,7 @@ public final class AtlasPlugin extends JavaPlugin {
     private MessageService messageService;
     private MessageBundleService messageBundleService;
     private LocalizedMessages localizedMessages;
+    private CommandService commandService;
 
     @Override
     public void onEnable() {
@@ -52,6 +56,7 @@ public final class AtlasPlugin extends JavaPlugin {
 
         initializePlayerData(database);
         initializeMessages();
+        initializeCommands();
 
         getLogger().info("Atlas has been enabled!");
     }
@@ -221,5 +226,14 @@ public final class AtlasPlugin extends JavaPlugin {
         if (databaseService != null) {
             databaseService.closeAll();
         }
+    }
+
+    public void initializeCommands() {
+        PaperCommandRegistrar registrar = new PaperCommandRegistrar(localizedMessages, getLogger());
+
+        this.commandService = new DefaultCommandService(registrar);
+
+
+        //commandService.register(this, new AtlasRootCommand());
     }
 }

@@ -7,3 +7,9 @@ common:
   no-permission: "<prefix><red>Tu n'as pas la permission."
   error: "<prefix><red>Une erreur est survenue."
   player-only: "<prefix><red>Cette commande est réservée aux joueurs."
+
+command:
+  help:
+    header: "<prefix><gold>Aide de /<command></gold>"
+    entry: "<gray>• <yellow>/<usage></yellow> <dark_gray>-</dark_gray> <white><description></white>"
+    empty: "<prefix><gray>Aucune commande disponible."
