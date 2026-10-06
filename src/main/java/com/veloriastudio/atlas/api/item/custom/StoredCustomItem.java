@@ -4,6 +4,7 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
 public final class StoredCustomItem implements CustomItem {
 
