@@ -1,14 +1,18 @@
 package com.veloriastudio.atlas.internal.item.museum;
 
+import com.veloriastudio.atlas.api.dialog.DialogBuilder;
 import com.veloriastudio.atlas.api.gui.Gui;
 import com.veloriastudio.atlas.api.gui.GuiButton;
 import com.veloriastudio.atlas.api.gui.PaginatedGui;
 import com.veloriastudio.atlas.api.item.custom.CustomItem;
+import com.veloriastudio.atlas.api.item.custom.CustomItemCategory;
 import com.veloriastudio.atlas.api.item.custom.CustomItemRegistry;
 import com.veloriastudio.atlas.api.item.custom.DynamicCustomItemService;
+import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -16,19 +20,23 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public final class CustomItemMuseum {
 
     private final CustomItemRegistry registry;
     private final DynamicCustomItemService storage;
     private final JavaPlugin plugin;
+    private final CustomItemMuseum museum;
 
-    public CustomItemMuseum(CustomItemRegistry registry, DynamicCustomItemService storage, JavaPlugin plugin) {
+    public CustomItemMuseum(CustomItemRegistry registry, DynamicCustomItemService storage, JavaPlugin plugin, CustomItemMuseum museum) {
         this.registry = Objects.requireNonNull(registry, "registry cannot be null");
         this.storage = Objects.requireNonNull(storage, "storage cannot be null");
         this.plugin = Objects.requireNonNull(plugin, "plugin cannot be null");
+        this.museum = Objects.requireNonNull(museum, "museum cannot be null");
     }
 
     public void open(Player player) {
@@ -55,10 +63,158 @@ public final class CustomItemMuseum {
                 switch (click.click()) {
 
                     case LEFT -> {
-                        player.getInventory().addItem(registry.create(item.id()));
+
+                        ItemStack created =
+                                registry.create(item.id());
+
+                        created.setAmount(1);
+
+                        click.player()
+                                .getInventory()
+                                .addItem(created);
                     }
 
-                    case RIGHT -> click.player().sendMessage("EDIT " + item.id().asString());
+                    case RIGHT -> {
+
+                        ItemStack itemStack = item.create();
+                        ItemMeta meta = itemStack.getItemMeta();
+
+                        Component title = meta.hasCustomName()
+                                ? meta.customName()
+                                : itemStack.effectiveName();
+
+                        String serializedTitle = meta.hasCustomName()
+                                ? MiniMessage.miniMessage().serialize(meta.customName())
+                                : "";
+
+                        boolean initialGlint =
+                                meta.hasEnchantmentGlintOverride()
+                                        && meta.getEnchantmentGlintOverride();
+
+                        int maxStack = meta.hasMaxStackSize()
+                                ? meta.getMaxStackSize()
+                                : itemStack.getMaxStackSize();
+
+                        String lore = "";
+
+                        if(itemStack.lore() != null){
+                            lore = itemStack.lore().stream()
+                                    .map(MiniMessage.miniMessage()::serialize)
+                                    .collect(Collectors.joining("\n"));
+                        }
+
+
+
+                        DialogBuilder.create(Component.text("Edition d'item"))
+                                .body(
+                                        DialogBody.item(
+                                                itemStack
+                                        ).build()
+                                ).text(
+                                        "item_id",
+                                        Component.text(
+                                                "Item ID"
+                                        ),
+                                        item.id().asString()
+                                ).text(
+                                        "category",
+                                        Component.text(
+                                                "Category"
+                                        ),
+                                        item.category().path()
+                                ).text(
+                                        "display_name",
+                                        Component.text(
+                                                "Display Name"
+                                        ),
+                                        serializedTitle
+                                ).textArea(
+                                        "lore",
+                                        Component.text("Lore"),
+                                        lore
+                                ).toggle(
+                                        "glind",
+                                Component.text("Glint"),
+                                        initialGlint
+                                ).toggle(
+                                        "unbreakable",
+                                Component.text("Unbreakable"),
+                                meta.isUnbreakable()
+                                ).number(
+                                        "max_stack",
+                                        Component.text("Max Stack Size"),
+                                        1,
+                                        99,
+                                        maxStack,
+                                        1
+                                ).cancel(Component.text("Cancel the edition")
+                                ).confirm(Component.text("Complete the edition"), (response, audience) -> {
+
+                                    // 1. Récupération
+                                    String itemId = response.getText("item_id");
+                                    String category = response.getText("category");
+                                    String displayName = response.getText("display_name");
+                                    String loreInput = response.getText("lore");
+
+                                    Boolean glint = response.getBoolean("glind");
+                                    Boolean unbreakable = response.getBoolean("unbreakable");
+
+                                    Float maxStackInput = response.getFloat("max_stack");
+
+                                    // 2. Validation
+                                    if (itemId == null
+                                            || category == null
+                                            || displayName == null
+                                            || loreInput == null
+                                            || glint == null
+                                            || unbreakable == null
+                                            || maxStackInput == null) {
+
+                                        player.sendMessage(Component.text("Invalid item data."));
+                                        return;
+                                    }
+
+                                    int editMaxStack = maxStackInput.intValue();
+
+                                    ItemStack updatedStack = itemStack.clone();
+                                    ItemMeta newMeta = updatedStack.getItemMeta();
+
+                                    newMeta.setEnchantmentGlintOverride(glint);
+                                    newMeta.setUnbreakable(unbreakable);
+                                    newMeta.setMaxStackSize(editMaxStack);
+
+                                    MiniMessage miniMessage = MiniMessage.miniMessage();
+
+                                    List<Component> newLore = Arrays.stream(loreInput.split("\\R"))
+                                            .map(miniMessage::deserialize)
+                                            .map(component ->
+                                                    component.decoration(TextDecoration.ITALIC, false)
+                                            )
+                                            .toList();
+
+                                    newMeta.lore(newLore);
+
+                                    newMeta.customName(
+                                            miniMessage.deserialize(displayName)
+                                                    .decoration(TextDecoration.ITALIC, false)
+                                    );
+
+                                    updatedStack.setItemMeta(newMeta);
+
+                                    storage.update(
+                                            item.id(),
+                                            CustomItemCategory.of(category),
+                                            updatedStack
+                                    );
+
+                                    player.closeInventory();
+                                    museum.open(player);
+                                })
+
+
+                                .open(player);
+                    }
+
 
                     case DROP, CONTROL_DROP -> new DeleteCustomItemConfirmationGui(
                             Component.text("Supression - " + item.id().asString()),

@@ -280,7 +280,7 @@ public final class AtlasPlugin extends JavaPlugin {
 
         this.dynamicCustomItemService = dynamicItems;
 
-        this.customItemMuseum = new CustomItemMuseum(customItemRegistry, dynamicCustomItemService, this);
+        this.customItemMuseum = new CustomItemMuseum(customItemRegistry, dynamicCustomItemService, this, customItemMuseum);
         try {
             dynamicItems.loadStoredItems().join();
 
