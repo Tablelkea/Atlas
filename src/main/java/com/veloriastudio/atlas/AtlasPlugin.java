@@ -6,11 +6,14 @@ import com.veloriastudio.atlas.api.config.ConfigService;
 import com.veloriastudio.atlas.api.database.Database;
 import com.veloriastudio.atlas.api.database.DatabaseService;
 import com.veloriastudio.atlas.api.database.MySqlConfig;
+import com.veloriastudio.atlas.api.item.custom.CustomItemRegistry;
+import com.veloriastudio.atlas.api.item.custom.DynamicCustomItemService;
 import com.veloriastudio.atlas.api.message.LocalizedMessages;
 import com.veloriastudio.atlas.api.message.MessageBundleService;
 import com.veloriastudio.atlas.api.message.MessageService;
 import com.veloriastudio.atlas.internal.command.DefaultCommandService;
 import com.veloriastudio.atlas.internal.command.PaperCommandRegistrar;
+import com.veloriastudio.atlas.internal.command.item.CreateDynamicItemCommand;
 import com.veloriastudio.atlas.internal.config.DefaultConfigService;
 import com.veloriastudio.atlas.internal.data.DefaultPlayerDataService;
 import com.veloriastudio.atlas.internal.data.PlayerDataKeyStore;
@@ -19,8 +22,13 @@ import com.veloriastudio.atlas.internal.data.PlayerDataSaver;
 import com.veloriastudio.atlas.internal.data.persistence.MySqlPlayerDataStorage;
 import com.veloriastudio.atlas.internal.data.persistence.PlayerDataChangeSerializer;
 import com.veloriastudio.atlas.internal.database.DefaultDatabaseService;
+import com.veloriastudio.atlas.internal.database.migration.CreateCustomItemsTableMigration;
 import com.veloriastudio.atlas.internal.database.migration.CreatePlayerDataTableMigration;
 import com.veloriastudio.atlas.internal.database.migration.DatabaseMigrationRunner;
+import com.veloriastudio.atlas.internal.item.DefaultCustomItemRegistry;
+import com.veloriastudio.atlas.internal.item.DefaultDynamicCustomItemService;
+import com.veloriastudio.atlas.internal.item.dialog.CustomItemCreationDialog;
+import com.veloriastudio.atlas.internal.item.persistence.StoredCustomItemPersistenceService;
 import com.veloriastudio.atlas.internal.message.DefaultLocalizedMessages;
 import com.veloriastudio.atlas.internal.message.DefaultMessageBundleService;
 import com.veloriastudio.atlas.internal.message.DefaultMessageService;
@@ -44,6 +52,8 @@ public final class AtlasPlugin extends JavaPlugin {
     private MessageBundleService messageBundleService;
     private LocalizedMessages localizedMessages;
     private CommandService commandService;
+    private CustomItemRegistry customItemRegistry;
+    private DynamicCustomItemService dynamicCustomItemService;
 
     @Override
     public void onEnable() {
@@ -56,6 +66,7 @@ public final class AtlasPlugin extends JavaPlugin {
 
         initializePlayerData(database);
         initializeMessages();
+        initializeItems(database);
         initializeCommands();
 
         getLogger().info("Atlas has been enabled!");
@@ -135,8 +146,7 @@ public final class AtlasPlugin extends JavaPlugin {
 
         try {
             migrationRunner.run(
-                    List.of(
-                            new CreatePlayerDataTableMigration()
+                    List.of(new CreatePlayerDataTableMigration(), new CreateCustomItemsTableMigration()
                     )
             ).join();
 
@@ -233,7 +243,39 @@ public final class AtlasPlugin extends JavaPlugin {
 
         this.commandService = new DefaultCommandService(registrar);
 
+        CustomItemCreationDialog itemCreationDialog =
+                new CustomItemCreationDialog(
+                        this,
+                        dynamicCustomItemService,
+                        customItemRegistry,
+                        messageService
+                );
 
-        //commandService.register(this, new AtlasRootCommand());
+        commandService.register(
+                this,
+                new CreateDynamicItemCommand(
+                        itemCreationDialog
+                )
+        );
+    }
+
+    private void initializeItems(Database database) {
+
+        this.customItemRegistry = new DefaultCustomItemRegistry(this);
+
+        StoredCustomItemPersistenceService persistence = StoredCustomItemPersistenceService.mysql(database);
+
+        DefaultDynamicCustomItemService dynamicItems = new DefaultDynamicCustomItemService(customItemRegistry, persistence);
+
+        this.dynamicCustomItemService = dynamicItems;
+
+        try {
+            dynamicItems.loadStoredItems().join();
+
+            getLogger().info("Stored custom items loaded: " + customItemRegistry.all().size());
+
+        } catch (Exception exception) {
+            throw new IllegalStateException("Failed to load stored custom items", exception);
+        }
     }
 }
