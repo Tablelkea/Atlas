@@ -11,70 +11,67 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class DefaultConfigService implements ConfigService {
+public final class DefaultConfigService
+        implements ConfigService {
 
     private final JavaPlugin plugin;
     private final Path rootDirectory;
 
-    private final Map<String, Config> configs = new ConcurrentHashMap<>();
+    private final Map<String, Config> configs =
+            new ConcurrentHashMap<>();
 
-    public DefaultConfigService(JavaPlugin plugin) {
+    public DefaultConfigService(
+            JavaPlugin plugin
+    ) {
+        this.plugin = Objects.requireNonNull(
+                plugin,
+                "plugin cannot be null"
+        );
 
-        this.plugin = Objects.requireNonNull(plugin, "plugin cannot be null");
-
-        this.rootDirectory = plugin.getDataFolder().toPath().toAbsolutePath().normalize();
+        this.rootDirectory =
+                plugin.getDataFolder()
+                        .toPath()
+                        .toAbsolutePath()
+                        .normalize();
     }
 
     @Override
-    public Config load(String name) {
+    public Config load(
+            String name
+    ) {
+        validateName(name);
 
-        Objects.requireNonNull(name, "name cannot be null");
-
-        if (name.isBlank()) {
-            throw new IllegalArgumentException("name cannot be blank");
-        }
-
-        return configs.computeIfAbsent(name, this::loadConfig);
-
+        return configs.computeIfAbsent(
+                name,
+                this::loadConfig
+        );
     }
 
     @Override
-    public Config loadResource(String name) {
+    public Config loadResource(
+            String name
+    ) {
+        validateName(name);
 
-        Objects.requireNonNull(name, "name cannot be null");
-
-        if (name.isBlank()) {
-            throw new IllegalArgumentException("name cannot be blank");
-        }
-
-        Config existing = configs.get(name);
-
-        if (existing != null) {
-            return existing;
-        }
-
-        Path filePath = resolvePath(name);
-
-        if (!Files.exists(filePath)) {
-            plugin.saveResource(name, false);
-        }
-
-        Config config = new DefaultConfig(name, filePath.toFile());
-
-        configs.put(name, config);
-
-        return config;
-
+        return configs.computeIfAbsent(
+                name,
+                this::loadResourceConfig
+        );
     }
 
     @Override
-    public void reload(String name) {
+    public void reload(
+            String name
+    ) {
+        validateName(name);
 
-        Config config = configs.get(name);
+        Config config =
+                configs.get(name);
 
         if (config == null) {
             throw new IllegalArgumentException(
-                    "config is not loaded: " + name
+                    "config is not loaded: "
+                            + name
             );
         }
 
@@ -83,43 +80,120 @@ public class DefaultConfigService implements ConfigService {
 
     @Override
     public void reloadAll() {
-
         for (Config config : configs.values()) {
             config.reload();
         }
-
     }
 
-    private Config loadConfig(String name) {
+    private Config loadConfig(
+            String name
+    ) {
+        Path filePath =
+                resolvePath(name);
 
-        Path filePath = resolvePath(name);
-
-        Path parent = filePath.getParent();
+        createParentDirectories(
+                filePath,
+                name
+        );
 
         try {
-            if (parent != null) {
-                Files.createDirectories(parent);
-            }
-
             if (!Files.exists(filePath)) {
-                Files.createFile(filePath);
+                Files.createFile(
+                        filePath
+                );
             }
-
-            return new DefaultConfig(name, filePath.toFile());
 
         } catch (IOException exception) {
-            throw new IllegalStateException("Failed to load config " + name, exception);
+            throw new IllegalStateException(
+                    "Failed to create config "
+                            + name,
+                    exception
+            );
+        }
+
+        return new DefaultConfig(
+                name,
+                filePath.toFile()
+        );
+    }
+
+    private Config loadResourceConfig(
+            String name
+    ) {
+        Path filePath =
+                resolvePath(name);
+
+        createParentDirectories(
+                filePath,
+                name
+        );
+
+        if (!Files.exists(filePath)) {
+            plugin.saveResource(
+                    name,
+                    false
+            );
+        }
+
+        return new DefaultConfig(
+                name,
+                filePath.toFile()
+        );
+    }
+
+    private void createParentDirectories(
+            Path filePath,
+            String name
+    ) {
+        Path parent =
+                filePath.getParent();
+
+        if (parent == null) {
+            return;
+        }
+
+        try {
+            Files.createDirectories(
+                    parent
+            );
+
+        } catch (IOException exception) {
+            throw new IllegalStateException(
+                    "Failed to create directories for config "
+                            + name,
+                    exception
+            );
         }
     }
 
-    private Path resolvePath(String name) {
-        Path filePath = rootDirectory.resolve(name).normalize();
+    private Path resolvePath(
+            String name
+    ) {
+        Path filePath =
+                rootDirectory.resolve(name)
+                        .normalize();
 
         if (!filePath.startsWith(rootDirectory)) {
-            throw new IllegalArgumentException("config path cannot escape plugin directory");
+            throw new IllegalArgumentException(
+                    "config path cannot escape plugin directory"
+            );
         }
 
         return filePath;
     }
 
+    private void validateName(
+            String name
+    ) {
+        Objects.requireNonNull(
+                name,
+                "name cannot be null"
+        );
+
+        if (name.isBlank()) {
+            throw new IllegalArgumentException(
+                    "name cannot be blank"
+            );
+        }
+    }
 }

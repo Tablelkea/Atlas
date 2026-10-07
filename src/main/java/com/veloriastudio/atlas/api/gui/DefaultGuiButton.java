@@ -5,27 +5,37 @@ import org.bukkit.inventory.ItemStack;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-public final class DefaultGuiButton implements GuiButton {
+final class DefaultGuiButton implements GuiButton {
 
     private final ItemStack itemStack;
     private final Consumer<GuiClickContext> consumer;
 
-    DefaultGuiButton(ItemStack itemStack, Consumer<GuiClickContext> context) {
+    DefaultGuiButton(
+            ItemStack itemStack,
+            Consumer<GuiClickContext> consumer
+    ) {
+        this.itemStack = Objects.requireNonNull(
+                itemStack,
+                "itemStack cannot be null"
+        ).clone();
 
-        this.itemStack = Objects.requireNonNull(itemStack, "itemstack cannot be null").clone();
-        this.consumer = Objects.requireNonNull(context, "context cannot be null");
-
+        this.consumer = Objects.requireNonNull(
+                consumer,
+                "consumer cannot be null"
+        );
     }
 
     @Override
     public ItemStack icon() {
-        return this.itemStack.clone();
+        return itemStack.clone();
     }
 
     @Override
     public void click(GuiClickContext context) {
-
-        Objects.requireNonNull(context, "context cannot be null");
+        Objects.requireNonNull(
+                context,
+                "context cannot be null"
+        );
 
         consumer.accept(context);
     }

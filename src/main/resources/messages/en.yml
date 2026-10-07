@@ -13,3 +13,7 @@ command:
     header: "<prefix><gold>Help for /<command></gold>"
     entry: "<gray>• <yellow>/<usage></yellow> <dark_gray>-</dark_gray> <white><description></white>"
     empty: "<prefix><gray>No commands available."
+
+item:
+  create:
+    must-hold-item: "<prefix><red>You must hold an item in your main hand."

@@ -1,5 +1,4 @@
 name: Atlas
 version: '${project.version}'
-
 main: com.veloriastudio.atlas.AtlasPlugin
 api-version: '1.21.10'

@@ -7,17 +7,19 @@ import com.veloriastudio.atlas.api.data.PlayerDataKey;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.UnaryOperator;
 
-public class DefaultPlayerData implements PlayerData {
+public final class DefaultPlayerData implements PlayerData {
 
     private final UUID playerId;
-    private final Map<PlayerDataKey<?>, Object> values = new HashMap<>();
+    private final ConcurrentMap<PlayerDataKey<?>, Object> values =
+            new ConcurrentHashMap<>();
     private final ConcurrentMap<PlayerDataKey<?>, DirtyState> dirtyKeys = new ConcurrentHashMap<>();
 
-    private long revisionCounter;
+    private final AtomicLong revisionCounter = new AtomicLong();
 
-    public DefaultPlayerData(UUID playerId) {
+    DefaultPlayerData(UUID playerId) {
         this.playerId = Objects.requireNonNull(playerId, "playerId cannot be null");
     }
 
@@ -116,8 +118,12 @@ public class DefaultPlayerData implements PlayerData {
         Objects.requireNonNull(key, "key cannot be null");
         Objects.requireNonNull(operation, "operation cannot be null");
 
-        revisionCounter++;
-        dirtyKeys.put(key, new DirtyState(operation, revisionCounter));
+        long revision = revisionCounter.incrementAndGet();
+
+        dirtyKeys.put(
+                key,
+                new DirtyState(operation, revision)
+        );
     }
 
     void markClean(PlayerDataKey<?> key, long savedRevision) {
@@ -159,7 +165,10 @@ public class DefaultPlayerData implements PlayerData {
         Objects.requireNonNull(value, "value cannot be null");
 
 
-        values.put(key, value);
+        values.put(
+                key,
+                key.type().cast(value)
+        );
 
     }
 

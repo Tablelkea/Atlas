@@ -4,9 +4,11 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 
-public final class StoredCustomItem implements CustomItem {
+public final class StoredCustomItem
+        implements CustomItem {
+
+    private static final int MAX_ID_LENGTH = 255;
 
     private final NamespacedKey id;
     private final CustomItemCategory category;
@@ -17,10 +19,30 @@ public final class StoredCustomItem implements CustomItem {
             CustomItemCategory category,
             ItemStack template
     ) {
-        this.id = Objects.requireNonNull(id);
-        this.category = Objects.requireNonNull(category);
+        this.id = Objects.requireNonNull(
+                id,
+                "id cannot be null"
+        );
 
-        Objects.requireNonNull(template);
+        this.category = Objects.requireNonNull(
+                category,
+                "category cannot be null"
+        );
+
+        Objects.requireNonNull(
+                template,
+                "template cannot be null"
+        );
+
+        if (id.asString().length()
+                > MAX_ID_LENGTH) {
+
+            throw new IllegalArgumentException(
+                    "stored custom item id cannot exceed "
+                            + MAX_ID_LENGTH
+                            + " characters"
+            );
+        }
 
         if (template.getType().isAir()) {
             throw new IllegalArgumentException(
@@ -28,7 +50,8 @@ public final class StoredCustomItem implements CustomItem {
             );
         }
 
-        this.template = template.clone();
+        this.template =
+                template.clone();
     }
 
     @Override
@@ -55,4 +78,3 @@ public final class StoredCustomItem implements CustomItem {
         return template.clone();
     }
 }
-

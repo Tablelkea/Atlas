@@ -6,13 +6,27 @@ import org.bukkit.event.inventory.ClickType;
 
 import java.util.Objects;
 
-public record DefaultGuiClickContext(Player player, int slot, ClickType click) implements GuiClickContext {
+record DefaultGuiClickContext(
+        Player player,
+        int slot,
+        ClickType click
+) implements GuiClickContext {
 
-    public DefaultGuiClickContext(Player player, int slot, ClickType click) {
+    DefaultGuiClickContext {
+        Objects.requireNonNull(
+                player,
+                "player cannot be null"
+        );
 
-        this.player = Objects.requireNonNull(player, "player cannot be null");
-        this.click = Objects.requireNonNull(click, "click cannot be null");
-        this.slot = slot;
+        Objects.requireNonNull(
+                click,
+                "click cannot be null"
+        );
 
+        if (slot < 0) {
+            throw new IllegalArgumentException(
+                    "slot cannot be negative"
+            );
+        }
     }
 }

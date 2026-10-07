@@ -15,111 +15,230 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Objects;
+import java.util.logging.Level;
 
-public class DeleteCustomItemConfirmationGui implements Gui {
+final class DeleteCustomItemConfirmationGui implements Gui {
 
-    private Component title;
-    private CustomItem item;
-    private DynamicCustomItemService storage;
-    private JavaPlugin plugin;
+    private static final int ROWS = 3;
 
-    public DeleteCustomItemConfirmationGui(
+    private final Component title;
+    private final CustomItem item;
+    private final DynamicCustomItemService dynamicItems;
+    private final JavaPlugin plugin;
+
+    DeleteCustomItemConfirmationGui(
             Component title,
             CustomItem item,
-            DynamicCustomItemService storage,
+            DynamicCustomItemService dynamicItems,
             JavaPlugin plugin
-
     ) {
-
-        this.title = Objects.requireNonNull(title, "title cannot be null");
-        this.item = Objects.requireNonNull(item, "item cannot be null");
-        this.storage = Objects.requireNonNull(storage, "storage cannot be null");
-        this.plugin = Objects.requireNonNull(plugin, "plugin cannot be null");
-    }
-
-    public void cancel(Player player) {
-
-        Objects.requireNonNull(player, "player cannot be null");
-
-        player.sendMessage(Component.text("Opération annulée.").color(NamedTextColor.RED));
-    }
-
-    public void accept(Player player) {
-
-        Objects.requireNonNull(player, "player cannot be null");
-
-        storage.delete(item.id()).whenComplete(
-                (deleted, throwable) -> {
-                    if (throwable != null) {
-                        player.sendMessage(Component.text("Une erreur c'est produite, opération annulée.").color(NamedTextColor.RED));
-                        throw new IllegalStateException("Error while deleting this item: " + item.id(), throwable);
-                    }
-                    player.sendMessage(Component.text("Opération déroulée avec succès.").color(NamedTextColor.GREEN));
-                }
+        this.title = Objects.requireNonNull(
+                title,
+                "title cannot be null"
         );
+
+        this.item = Objects.requireNonNull(
+                item,
+                "item cannot be null"
+        );
+
+        this.dynamicItems = Objects.requireNonNull(
+                dynamicItems,
+                "dynamicItems cannot be null"
+        );
+
+        this.plugin = Objects.requireNonNull(
+                plugin,
+                "plugin cannot be null"
+        );
+
+        if (!item.editable()) {
+            throw new IllegalArgumentException(
+                    "custom item is not editable: "
+                            + item.id().asString()
+            );
+        }
     }
 
     @Override
     public Component title() {
-        return this.title;
+        return title;
     }
 
     @Override
     public int rows() {
-        return 3;
+        return ROWS;
     }
 
     @Override
     public void open(Player player) {
-        Objects.requireNonNull(player, "player cannot be null");
+        Objects.requireNonNull(
+                player,
+                "player cannot be null"
+        );
 
-        ItemStack accept = ItemBuilder.of(Material.LIME_CONCRETE)
-                .amount(1)
-                .name(Component.text("Accepter").color(NamedTextColor.GREEN).decoration(TextDecoration.BOLD, true))
-                .build();
+        ItemStack acceptButton =
+                ItemBuilder.of(Material.LIME_CONCRETE)
+                        .name(
+                                Component.text("Accepter")
+                                        .color(NamedTextColor.GREEN)
+                                        .decoration(
+                                                TextDecoration.BOLD,
+                                                true
+                                        )
+                        )
+                        .build();
 
-        ItemStack cancel = ItemBuilder.of(Material.RED_CONCRETE)
-                .amount(1)
-                .name(Component.text("Annuler").color(NamedTextColor.RED).decoration(TextDecoration.BOLD, true))
-                .build();
+        ItemStack cancelButton =
+                ItemBuilder.of(Material.RED_CONCRETE)
+                        .name(
+                                Component.text("Annuler")
+                                        .color(NamedTextColor.RED)
+                                        .decoration(
+                                                TextDecoration.BOLD,
+                                                true
+                                        )
+                        )
+                        .build();
 
-        GuiBuilder builder = new GuiBuilder();
+        Gui gui = new GuiBuilder()
+                .title(title)
+                .rows(ROWS)
+                .button(
+                        10,
+                        GuiButton.of(
+                                cancelButton,
+                                context -> {
+                                    context.player()
+                                            .closeInventory();
 
-        Gui gui = builder.title(title)
-                .rows(rows())
-                .button(16, GuiButton.of(
-                        accept,
-                        context -> {
-                            plugin.getServer().getScheduler().runTask(plugin, () -> {
-                                accept(player);
-                                player.closeInventory();
+                                    cancel(
+                                            context.player()
+                                    );
+                                }
+                        )
+                )
+                .button(
+                        13,
+                        GuiButton.of(
+                                item.create(),
+                                context -> {
+                                }
+                        )
+                )
+                .button(
+                        16,
+                        GuiButton.of(
+                                acceptButton,
+                                context -> {
+                                    context.player()
+                                            .closeInventory();
 
-                            });
-                        }
-                ))
-                .button(10, GuiButton.of(
-                        cancel,
-                        context -> {
-                            plugin.getServer().getScheduler().runTask(plugin, () -> {
-                                cancel(player);
-                                player.closeInventory();
-                            });
-                        }
-                ))
-                .button(13, GuiButton.of(
-                        item.create(),
-                        context -> {}
-                ))
-
+                                    delete(
+                                            context.player()
+                                    );
+                                }
+                        )
+                )
                 .border(
-                        GuiButton.of(ItemStack.of(Material.BLACK_STAINED_GLASS_PANE), action -> {})
-                ).fill(
-                        GuiButton.of(ItemStack.of(Material.GRAY_STAINED_GLASS_PANE), action -> {})
+                        GuiButton.of(
+                                ItemStack.of(
+                                        Material.BLACK_STAINED_GLASS_PANE
+                                ),
+                                context -> {
+                                }
+                        )
+                )
+                .fill(
+                        GuiButton.of(
+                                ItemStack.of(
+                                        Material.GRAY_STAINED_GLASS_PANE
+                                ),
+                                context -> {
+                                }
+                        )
                 )
                 .build();
 
-
-
         gui.open(player);
+    }
+
+    private void cancel(Player player) {
+        player.sendMessage(
+                Component.text(
+                        "Opération annulée."
+                ).color(
+                        NamedTextColor.RED
+                )
+        );
+    }
+
+    private void delete(Player player) {
+        dynamicItems.delete(
+                item.id()
+        ).whenComplete(
+                (deleted, throwable) ->
+                        plugin.getServer()
+                                .getScheduler()
+                                .runTask(
+                                        plugin,
+                                        () -> handleDeleteResult(
+                                                player,
+                                                deleted,
+                                                throwable
+                                        )
+                                )
+        );
+    }
+
+    private void handleDeleteResult(
+            Player player,
+            Boolean deleted,
+            Throwable throwable
+    ) {
+        if (throwable != null) {
+            plugin.getLogger().log(
+                    Level.SEVERE,
+                    "Failed to delete custom item "
+                            + item.id().asString(),
+                    throwable
+            );
+
+            if (player.isOnline()) {
+                player.sendMessage(
+                        Component.text(
+                                "Une erreur est survenue pendant la suppression."
+                        ).color(
+                                NamedTextColor.RED
+                        )
+                );
+            }
+
+            return;
+        }
+
+        if (!player.isOnline()) {
+            return;
+        }
+
+        if (!Boolean.TRUE.equals(deleted)) {
+            player.sendMessage(
+                    Component.text(
+                            "L'item n'existe plus."
+                    ).color(
+                            NamedTextColor.RED
+                    )
+            );
+
+            return;
+        }
+
+        player.sendMessage(
+                Component.text(
+                        "Item supprimé avec succès."
+                ).color(
+                        NamedTextColor.GREEN
+                )
+        );
     }
 }

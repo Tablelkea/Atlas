@@ -9,18 +9,33 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-public class DefaultConfig implements Config {
+public final class DefaultConfig
+        implements Config {
 
     private final String name;
     private final File file;
+
     private YamlConfiguration configuration;
 
-    public DefaultConfig(String name, File file) {
-        this.name = Objects.requireNonNull(name, "name cannot be null");
-        this.file = Objects.requireNonNull(file, "file cannot be null");
-        this.configuration = YamlConfiguration.loadConfiguration(file);
-    }
+    public DefaultConfig(
+            String name,
+            File file
+    ) {
+        this.name = Objects.requireNonNull(
+                name,
+                "name cannot be null"
+        );
 
+        this.file = Objects.requireNonNull(
+                file,
+                "file cannot be null"
+        );
+
+        this.configuration =
+                YamlConfiguration.loadConfiguration(
+                        file
+                );
+    }
 
     @Override
     public String name() {
@@ -28,59 +43,122 @@ public class DefaultConfig implements Config {
     }
 
     @Override
-    public boolean contains(String path) {
+    public boolean contains(
+            String path
+    ) {
+        Objects.requireNonNull(
+                path,
+                "path cannot be null"
+        );
 
-        Objects.requireNonNull(path, "path cannot be null");
-
-        return configuration.contains(path);
+        return configuration.contains(
+                path
+        );
     }
 
     @Override
-    public <T> Optional<T> get(String path, Class<T> type) {
+    public <T> Optional<T> get(
+            String path,
+            Class<T> type
+    ) {
+        Objects.requireNonNull(
+                path,
+                "path cannot be null"
+        );
 
-        Objects.requireNonNull(path, "path cannot be null");
-        Objects.requireNonNull(type, "type cannot be null");
+        Objects.requireNonNull(
+                type,
+                "type cannot be null"
+        );
 
-        Object value = configuration.get(path);
+        Object value =
+                configuration.get(path);
 
         if (value == null) {
             return Optional.empty();
         }
 
-        return Optional.of(type.cast(value));
+        if (!type.isInstance(value)) {
+            throw new ClassCastException(
+                    "value at path '"
+                            + path
+                            + "' is "
+                            + value.getClass().getSimpleName()
+                            + ", expected "
+                            + type.getSimpleName()
+            );
+        }
+
+        return Optional.of(
+                type.cast(value)
+        );
     }
 
     @Override
-    public Optional<String> getString(String path) {
-        return get(path, String.class);
+    public Optional<String> getString(
+            String path
+    ) {
+        return get(
+                path,
+                String.class
+        );
     }
 
     @Override
-    public Optional<Integer> getInt(String path) {
-        return get(path, Integer.class);
+    public Optional<Integer> getInt(
+            String path
+    ) {
+        return number(path)
+                .map(number ->
+                        convertToInt(
+                                path,
+                                number
+                        )
+                );
     }
 
     @Override
-    public Optional<Long> getLong(String path) {
-        return get(path, Long.class);
+    public Optional<Long> getLong(
+            String path
+    ) {
+        return number(path)
+                .map(number ->
+                        convertToLong(
+                                path,
+                                number
+                        )
+                );
     }
 
     @Override
-    public Optional<Double> getDouble(String path) {
-        return get(path, Double.class);
+    public Optional<Double> getDouble(
+            String path
+    ) {
+        return number(path)
+                .map(Number::doubleValue);
     }
 
     @Override
-    public Optional<Boolean> getBoolean(String path) {
-        return get(path, Boolean.class);
+    public Optional<Boolean> getBoolean(
+            String path
+    ) {
+        return get(
+                path,
+                Boolean.class
+        );
     }
 
     @Override
-    public Optional<List<String>> getStringList(String path) {
+    public Optional<List<String>> getStringList(
+            String path
+    ) {
+        Objects.requireNonNull(
+                path,
+                "path cannot be null"
+        );
 
-        Objects.requireNonNull(path, "path cannot be null");
-
-        Object value = configuration.get(path);
+        Object value =
+                configuration.get(path);
 
         if (value == null) {
             return Optional.empty();
@@ -88,14 +166,18 @@ public class DefaultConfig implements Config {
 
         if (!(value instanceof List<?> list)) {
             throw new ClassCastException(
-                    "value at path '" + path + "' is not a list"
+                    "value at path '"
+                            + path
+                            + "' is not a list"
             );
         }
 
         for (Object element : list) {
             if (!(element instanceof String)) {
                 throw new ClassCastException(
-                        "list at path '" + path + "' contains a non-string value"
+                        "list at path '"
+                                + path
+                                + "' contains a non-string value"
                 );
             }
         }
@@ -108,39 +190,144 @@ public class DefaultConfig implements Config {
     }
 
     @Override
-    public <T> T getOrDefault(String path, Class<T> type, T defaultValue) {
+    public <T> T getOrDefault(
+            String path,
+            Class<T> type,
+            T defaultValue
+    ) {
+        Objects.requireNonNull(
+                defaultValue,
+                "defaultValue cannot be null"
+        );
 
-        Objects.requireNonNull(defaultValue, "defaultValue cannot be null");
-
-        Optional<T> config = get(path, type);
-
-        return config.orElse(defaultValue);
-
+        return get(
+                path,
+                type
+        ).orElse(defaultValue);
     }
 
     @Override
-    public void set(String path, Object value) {
+    public void set(
+            String path,
+            Object value
+    ) {
+        Objects.requireNonNull(
+                path,
+                "path cannot be null"
+        );
 
-        Objects.requireNonNull(path, "path cannot be null");
-        Objects.requireNonNull(value, "value cannot be null");
+        Objects.requireNonNull(
+                value,
+                "value cannot be null"
+        );
 
-        configuration.set(path, value);
+        configuration.set(
+                path,
+                value
+        );
     }
 
     @Override
     public void save() {
-
         try {
-            configuration.save(file);
+            configuration.save(
+                    file
+            );
 
         } catch (IOException exception) {
-            throw new IllegalStateException("Failed to save config " + name, exception);
+            throw new IllegalStateException(
+                    "Failed to save config "
+                            + name,
+                    exception
+            );
         }
-
     }
 
     @Override
     public void reload() {
-        configuration = YamlConfiguration.loadConfiguration(file);
+        configuration =
+                YamlConfiguration.loadConfiguration(
+                        file
+                );
+    }
+
+    private Optional<Number> number(
+            String path
+    ) {
+        Objects.requireNonNull(
+                path,
+                "path cannot be null"
+        );
+
+        Object value =
+                configuration.get(path);
+
+        if (value == null) {
+            return Optional.empty();
+        }
+
+        if (!(value instanceof Number number)) {
+            throw new ClassCastException(
+                    "value at path '"
+                            + path
+                            + "' is "
+                            + value.getClass().getSimpleName()
+                            + ", expected a number"
+            );
+        }
+
+        return Optional.of(number);
+    }
+
+    private int convertToInt(
+            String path,
+            Number number
+    ) {
+        double value =
+                number.doubleValue();
+
+        if (!Double.isFinite(value)
+                || value != Math.rint(value)
+                || value < Integer.MIN_VALUE
+                || value > Integer.MAX_VALUE) {
+
+            throw new ArithmeticException(
+                    "value at path '"
+                            + path
+                            + "' cannot be represented as an int"
+            );
+        }
+
+        return number.intValue();
+    }
+
+    private long convertToLong(
+            String path,
+            Number number
+    ) {
+        if (number instanceof Byte
+                || number instanceof Short
+                || number instanceof Integer
+                || number instanceof Long) {
+
+            return number.longValue();
+        }
+
+        double value =
+                number.doubleValue();
+
+        if (!Double.isFinite(value)
+                || value != Math.rint(value)
+                || value < Long.MIN_VALUE
+                || value > Long.MAX_VALUE) {
+
+            throw new ArithmeticException(
+                    "value at path '"
+                            + path
+                            + "' cannot be represented as a long"
+            );
+        }
+
+        return number.longValue();
     }
 }

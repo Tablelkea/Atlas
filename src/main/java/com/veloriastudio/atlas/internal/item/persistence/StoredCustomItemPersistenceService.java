@@ -17,21 +17,29 @@ public final class StoredCustomItemPersistenceService {
             StoredCustomItemStorage storage,
             StoredCustomItemCodec codec
     ) {
-        this.storage = Objects.requireNonNull(storage);
-        this.codec = Objects.requireNonNull(codec);
+        this.storage = Objects.requireNonNull(
+                storage,
+                "storage cannot be null"
+        );
+
+        this.codec = Objects.requireNonNull(
+                codec,
+                "codec cannot be null"
+        );
     }
 
     public static StoredCustomItemPersistenceService mysql(
             Database database
     ) {
-
         Objects.requireNonNull(
                 database,
                 "database cannot be null"
         );
 
         return new StoredCustomItemPersistenceService(
-                new MySqlStoredCustomItemStorage(database),
+                new MySqlStoredCustomItemStorage(
+                        database
+                ),
                 new StoredCustomItemCodec()
         );
     }
@@ -39,32 +47,43 @@ public final class StoredCustomItemPersistenceService {
     public CompletableFuture<Void> save(
             StoredCustomItem item
     ) {
+        Objects.requireNonNull(
+                item,
+                "item cannot be null"
+        );
 
         StoredCustomItemRecord record =
-                codec.encode(item);
+                codec.encode(
+                        item
+                );
 
-        return storage.save(record);
+        return storage.save(
+                record
+        );
     }
 
     public CompletableFuture<Void> delete(
             NamespacedKey id
     ) {
-        return storage.delete(id);
+        Objects.requireNonNull(
+                id,
+                "id cannot be null"
+        );
+
+        return storage.delete(
+                id
+        );
     }
 
     public CompletableFuture<List<StoredCustomItem>> loadAll() {
-
         return storage.loadAll()
-                .thenApply(records ->
-                        records.stream()
-                                .map(codec::decode)
-                                .toList()
+                .thenApply(
+                        records ->
+                                records.stream()
+                                        .map(
+                                                codec::decode
+                                        )
+                                        .toList()
                 );
-    }
-
-    public StoredCustomItem decode(
-            StoredCustomItemRecord record
-    ) {
-        return codec.decode(record);
     }
 }

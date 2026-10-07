@@ -24,8 +24,12 @@ final class DefaultCommandSuggestionContext implements CommandSuggestionContext 
     @Override
     public <T> Optional<T> argument(String name, Class<T> type) {
 
-        Objects.requireNonNull(name);
-        Objects.requireNonNull(type);
+        Objects.requireNonNull(name, "name cannot be null");
+        Objects.requireNonNull(type, "type cannot be null");
+
+        if (name.isBlank()) {
+            throw new IllegalArgumentException("name cannot be blank");
+        }
 
         try {
             return Optional.ofNullable(context.getArgument(name, type));

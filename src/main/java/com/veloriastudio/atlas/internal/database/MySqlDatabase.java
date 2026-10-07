@@ -16,12 +16,12 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class MySqlDatabase implements Database {
+final class MySqlDatabase implements Database {
 
     private final HikariDataSource dataSource;
     private final ExecutorService executor;
 
-    public MySqlDatabase(MySqlConfig config) {
+    MySqlDatabase(MySqlConfig config) {
 
         Objects.requireNonNull(config, "config cannot be null");
 
@@ -184,8 +184,8 @@ public class MySqlDatabase implements Database {
 
     @Override
     public void close() {
+        executor.close();
         dataSource.close();
-        executor.shutdown();
     }
 
     @Override

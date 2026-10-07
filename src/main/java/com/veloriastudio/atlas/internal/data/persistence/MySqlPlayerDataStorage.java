@@ -3,12 +3,14 @@ package com.veloriastudio.atlas.internal.data.persistence;
 import com.veloriastudio.atlas.api.data.DataKeyId;
 import com.veloriastudio.atlas.api.data.PlayerDataKey;
 import com.veloriastudio.atlas.api.database.Database;
-import com.veloriastudio.atlas.internal.data.DirtyOperation;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-public class MySqlPlayerDataStorage implements PlayerDataStorage {
+public final class MySqlPlayerDataStorage implements PlayerDataStorage {
 
     private static final String SELECT_SQL = """
             SELECT namespace, data_key, value
@@ -39,50 +41,46 @@ public class MySqlPlayerDataStorage implements PlayerDataStorage {
         Objects.requireNonNull(playerId, "playerId cannot be null");
         Objects.requireNonNull(changes, "changes cannot be null");
 
-        List<CompletableFuture<Integer>> futures = new ArrayList<>();
+        return database.transaction(transaction -> {
 
-        for (Map.Entry<PlayerDataKey<?>, SerializedDirtyEntry> entry : changes.entrySet()) {
+            for (Map.Entry<PlayerDataKey<?>, SerializedDirtyEntry> entry
+                    : changes.entrySet()) {
 
-            PlayerDataKey<?> key = entry.getKey();
-            SerializedDirtyEntry change = entry.getValue();
+                PlayerDataKey<?> key = entry.getKey();
+                SerializedDirtyEntry change = entry.getValue();
 
-            DataKeyId id = key.id();
+                DataKeyId id = key.id();
 
-            if (change.operation() == DirtyOperation.DELETE) {
+                switch (change.operation()) {
+                    case DELETE -> transaction.update(
+                            DELETE_SQL,
+                            playerId.toString(),
+                            id.namespace(),
+                            id.name()
+                    );
 
-                futures.add(
-                        database.update(
-                                DELETE_SQL,
-                                playerId.toString(),
-                                id.namespace(),
-                                id.name()
-                        )
-                );
+                    case UPSERT -> {
+                        String value = change.value()
+                                .orElseThrow(() ->
+                                        new IllegalStateException(
+                                                "UPSERT must contain a value"
+                                        )
+                                );
 
-            } else if (change.operation() == DirtyOperation.UPSERT) {
-
-                String value = change.value().orElseThrow(() ->
-                        new IllegalStateException("UPSERT must contain a value")
-                );
-
-                futures.add(
-                        database.update(
+                        transaction.update(
                                 UPSERT_SQL,
                                 playerId.toString(),
                                 id.namespace(),
                                 id.name(),
                                 value,
                                 value
-                        )
-                );
-
+                        );
+                    }
+                }
             }
 
-        }
-
-        return CompletableFuture.allOf(
-                futures.toArray(CompletableFuture[]::new)
-        );
+            return null;
+        });
 
     }
 

@@ -42,6 +42,10 @@ public final class DefaultDatabaseService implements DatabaseService {
 
         Objects.requireNonNull(name, "name cannot be null");
 
+        if (name.isBlank()) {
+            throw new IllegalArgumentException("name cannot be blank");
+        }
+
         return Optional.ofNullable(databases.get(name));
     }
 

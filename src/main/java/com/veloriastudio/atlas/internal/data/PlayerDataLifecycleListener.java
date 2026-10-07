@@ -1,7 +1,5 @@
 package com.veloriastudio.atlas.internal.data;
 
-import com.veloriastudio.atlas.api.data.PlayerDataKey;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -13,63 +11,107 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.logging.Level;
 
-public class PlayerDataLifecycleListener implements Listener {
+public final class PlayerDataLifecycleListener
+        implements Listener {
 
     private final JavaPlugin plugin;
     private final DefaultPlayerDataService service;
-    private final PlayerDataKey<Integer> joinsKey;
 
     public PlayerDataLifecycleListener(
-            JavaPlugin javaPlugin,
-            DefaultPlayerDataService dataService,
-            PlayerDataKey<Integer> dataKey
+            JavaPlugin plugin,
+            DefaultPlayerDataService service
     ) {
+        this.plugin = Objects.requireNonNull(
+                plugin,
+                "plugin cannot be null"
+        );
 
-        this.plugin = Objects.requireNonNull(javaPlugin, "javaPlugin cannot be null");
-        this.service = Objects.requireNonNull(dataService, "dataService cannot be null");
-        this.joinsKey = Objects.requireNonNull(dataKey, "dataKey cannot be null");
-    }
-
-    @EventHandler
-    public void onJoin(PlayerJoinEvent event) {
-        Player player = event.getPlayer();
-        UUID playerId = player.getUniqueId();
-
-        service.markActive(playerId);
-
-        service.load(playerId).thenAccept(data ->
-                Bukkit.getScheduler().runTask(plugin, () -> {
-
-                    if (!player.isOnline()) {
-                        return;
-                    }
-
-                    int joins = data.get(joinsKey).orElse(0);
-
-                    data.set(joinsKey, joins + 1);
-
-                    plugin.getLogger().info(
-                            player.getName() + " joins = " + (joins + 1)
-                    );
-                })
+        this.service = Objects.requireNonNull(
+                service,
+                "service cannot be null"
         );
     }
 
     @EventHandler
-    public void onQuit(PlayerQuitEvent event) {
-        UUID playerId = event.getPlayer().getUniqueId();
+    public void onJoin(
+            PlayerJoinEvent event
+    ) {
+        Player player =
+                event.getPlayer();
 
-        service.markInactive(playerId);
+        UUID playerId =
+                player.getUniqueId();
 
-        service.flush(playerId)
-                .exceptionally(exception -> {
+        service.load(playerId)
+                .exceptionally(throwable -> {
                     plugin.getLogger().log(
                             Level.SEVERE,
-                            "Failed to save PlayerData for " + playerId,
-                            exception
+                            "Failed to load PlayerData for "
+                                    + playerId,
+                            throwable
                     );
+
                     return null;
                 });
     }
 
+    @EventHandler
+    public void onQuit(
+            PlayerQuitEvent event
+    ) {
+        UUID playerId =
+                event.getPlayer()
+                        .getUniqueId();
+
+        service.flush(playerId)
+                .whenComplete(
+                        (ignored, throwable) ->
+                                plugin.getServer()
+                                        .getScheduler()
+                                        .runTask(
+                                                plugin,
+                                                () -> finishQuit(
+                                                        playerId,
+                                                        throwable
+                                                )
+                                        )
+                );
+    }
+
+    private void finishQuit(
+            UUID playerId,
+            Throwable throwable
+    ) {
+        if (throwable != null) {
+            plugin.getLogger().log(
+                    Level.SEVERE,
+                    "Failed to save PlayerData for "
+                            + playerId,
+                    throwable
+            );
+
+            /*
+             * En cas d'échec de sauvegarde, on conserve
+             * les données en mémoire plutôt que de les
+             * perdre définitivement.
+             */
+            return;
+        }
+
+        Player player =
+                plugin.getServer()
+                        .getPlayer(playerId);
+
+        /*
+         * Le joueur a pu se reconnecter pendant
+         * l'écriture asynchrone en base.
+         */
+        if (player != null
+                && player.isOnline()) {
+
+            return;
+        }
+
+        service.unload(playerId);
+    }
 }

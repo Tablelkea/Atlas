@@ -3,131 +3,192 @@ package com.veloriastudio.atlas.internal.data;
 import com.veloriastudio.atlas.api.data.PlayerData;
 import com.veloriastudio.atlas.api.data.PlayerDataService;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-public class DefaultPlayerDataService implements PlayerDataService {
+public final class DefaultPlayerDataService
+        implements PlayerDataService {
 
     private final PlayerDataLoader loader;
     private final PlayerDataSaver saver;
 
-    private final ConcurrentMap<UUID, DefaultPlayerData> loaded = new ConcurrentHashMap<>();
-    private final ConcurrentMap<UUID, CompletableFuture<DefaultPlayerData>> loading = new ConcurrentHashMap<>();
+    private final ConcurrentMap<UUID, DefaultPlayerData> loaded =
+            new ConcurrentHashMap<>();
 
-    private final Duration retention;
-    private final Map<UUID, Instant> inactiveSince = new ConcurrentHashMap<>();
+    private final ConcurrentMap<UUID, CompletableFuture<DefaultPlayerData>> loading =
+            new ConcurrentHashMap<>();
 
-    public DefaultPlayerDataService(PlayerDataLoader loader, PlayerDataSaver saver, Duration retention) {
-        this.loader = Objects.requireNonNull(loader, "loader cannot be null");
-        this.saver = Objects.requireNonNull(saver, "saver cannot be null");
-        this.retention = Objects.requireNonNull(retention, "duration cannot be null");
+    public DefaultPlayerDataService(
+            PlayerDataLoader loader,
+            PlayerDataSaver saver
+    ) {
+        this.loader = Objects.requireNonNull(
+                loader,
+                "loader cannot be null"
+        );
+
+        this.saver = Objects.requireNonNull(
+                saver,
+                "saver cannot be null"
+        );
     }
 
     @Override
-    public Optional<PlayerData> findLoaded(UUID playerId) {
+    public Optional<PlayerData> findLoaded(
+            UUID playerId
+    ) {
+        Objects.requireNonNull(
+                playerId,
+                "playerId cannot be null"
+        );
 
-        Objects.requireNonNull(playerId, "playerId cannot be null");
-
-        PlayerData data = loaded.get(playerId);
-
-        if (data == null) {
-            return Optional.empty();
-        }
-
-        return Optional.of(data);
+        return Optional.ofNullable(
+                loaded.get(playerId)
+        );
     }
 
     @Override
-    public CompletableFuture<PlayerData> load(UUID playerId) {
+    public CompletableFuture<PlayerData> load(
+            UUID playerId
+    ) {
+        Objects.requireNonNull(
+                playerId,
+                "playerId cannot be null"
+        );
 
-        Objects.requireNonNull(playerId, "playerId cannot be null");
+        DefaultPlayerData existing =
+                loaded.get(playerId);
 
-        PlayerData loadData = loaded.get(playerId);
-
-        if (loadData != null) {
-            return CompletableFuture.completedFuture(loadData);
+        if (existing != null) {
+            return CompletableFuture.completedFuture(
+                    existing
+            );
         }
 
-        CompletableFuture<DefaultPlayerData> future = loading.computeIfAbsent(playerId, id -> {
+        CompletableFuture<DefaultPlayerData> future =
+                loading.computeIfAbsent(
+                        playerId,
+                        id ->
+                                loader.load(id)
+                                        .thenApply(data -> {
+                                            DefaultPlayerData alreadyLoaded =
+                                                    loaded.putIfAbsent(
+                                                            id,
+                                                            data
+                                                    );
 
-            DefaultPlayerData existingData = loaded.get(id);
+                                            return alreadyLoaded != null
+                                                    ? alreadyLoaded
+                                                    : data;
+                                        })
+                );
 
-            if (existingData != null) {
-                return CompletableFuture.completedFuture(existingData);
-            }
+        future.whenComplete(
+                (data, throwable) ->
+                        loading.remove(
+                                playerId,
+                                future
+                        )
+        );
 
-            return loader.load(id).thenApply(data -> {
-                loaded.put(id, data);
-                return data;
-            });
-        });
-
-        future.whenComplete((data, error) -> loading.remove(playerId, future));
-
-        return future.thenApply(data -> data);
+        return future.thenApply(
+                data -> data
+        );
     }
 
-    CompletableFuture<Void> flush(UUID playerId) {
-        DefaultPlayerData data = loaded.get(playerId);
+    @Override
+    public CompletableFuture<Void> flush(
+            UUID playerId
+    ) {
+        Objects.requireNonNull(
+                playerId,
+                "playerId cannot be null"
+        );
 
-        if (data == null) {
-            return CompletableFuture.completedFuture(null);
+        DefaultPlayerData data =
+                loaded.get(playerId);
+
+        if (data != null) {
+            return flushData(data);
         }
 
-        return saver.save(data).thenAccept(snapshot -> snapshot.forEach((key, entry) -> data.markClean(key, entry.revision())));
-    }
+        CompletableFuture<DefaultPlayerData> loadingFuture =
+                loading.get(playerId);
 
-    void markActive(UUID playerId) {
-        Objects.requireNonNull(playerId, "playerId cannot be null");
-        inactiveSince.remove(playerId);
-    }
-
-    void markInactive(UUID playerId) {
-        Objects.requireNonNull(playerId, "playerId cannot be null");
-        inactiveSince.put(playerId, Instant.now());
-    }
-
-    CompletableFuture<Void> evictExpired() {
-
-        List<CompletableFuture<Void>> futures = new ArrayList<>();
-
-        for (Map.Entry<UUID, Instant> entry : inactiveSince.entrySet()) {
-
-            UUID playerId = entry.getKey();
-            Instant inactiveAt = entry.getValue();
-
-            if (Duration.between(inactiveAt, Instant.now()).compareTo(retention) >= 0) {
-
-                CompletableFuture<Void> future = flush(playerId).thenRun(() -> inactiveSince.compute(playerId, (id, currentInactiveAt) -> {
-                    if (Objects.equals(currentInactiveAt, inactiveAt)) {
-                        loaded.remove(id);
-                        return null;
-                    }
-
-                    return currentInactiveAt;
-                }));
-
-                futures.add(future);
-            }
+        if (loadingFuture == null) {
+            return CompletableFuture.completedFuture(
+                    null
+            );
         }
 
-        return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
+        /*
+         * Le joueur peut quitter alors que son
+         * chargement BDD est encore en cours.
+         */
+        return loadingFuture.thenCompose(
+                this::flushData
+        );
     }
 
+    @Override
     public CompletableFuture<Void> flushAll() {
+        Set<UUID> playerIds =
+                new HashSet<>();
 
-        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        playerIds.addAll(
+                loaded.keySet()
+        );
 
-        for (UUID playerId : loaded.keySet()) {
-            CompletableFuture<Void> future = flush(playerId);
+        /*
+         * Les chargements encore en cours doivent aussi
+         * être attendus lors de l'arrêt du plugin.
+         */
+        playerIds.addAll(
+                loading.keySet()
+        );
 
-            futures.add(future);
-        }
+        CompletableFuture<?>[] futures =
+                playerIds.stream()
+                        .map(this::flush)
+                        .toArray(
+                                CompletableFuture[]::new
+                        );
 
-        return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
+        return CompletableFuture.allOf(
+                futures
+        );
+    }
+
+    void unload(
+            UUID playerId
+    ) {
+        Objects.requireNonNull(
+                playerId,
+                "playerId cannot be null"
+        );
+
+        loaded.remove(playerId);
+    }
+
+    private CompletableFuture<Void> flushData(
+            DefaultPlayerData data
+    ) {
+        return saver.save(data)
+                .thenAccept(
+                        snapshot ->
+                                snapshot.forEach(
+                                        (key, entry) ->
+                                                data.markClean(
+                                                        key,
+                                                        entry.revision()
+                                                )
+                                )
+                );
     }
 }

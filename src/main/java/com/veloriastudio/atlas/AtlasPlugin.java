@@ -1,8 +1,10 @@
 package com.veloriastudio.atlas;
 
+import com.veloriastudio.atlas.api.command.AtlasCommand;
 import com.veloriastudio.atlas.api.command.CommandService;
 import com.veloriastudio.atlas.api.config.Config;
 import com.veloriastudio.atlas.api.config.ConfigService;
+import com.veloriastudio.atlas.api.data.PlayerDataService;
 import com.veloriastudio.atlas.api.database.Database;
 import com.veloriastudio.atlas.api.database.DatabaseService;
 import com.veloriastudio.atlas.api.database.MySqlConfig;
@@ -18,6 +20,7 @@ import com.veloriastudio.atlas.internal.command.item.CreateDynamicItemCommand;
 import com.veloriastudio.atlas.internal.config.DefaultConfigService;
 import com.veloriastudio.atlas.internal.data.DefaultPlayerDataService;
 import com.veloriastudio.atlas.internal.data.PlayerDataKeyStore;
+import com.veloriastudio.atlas.internal.data.PlayerDataLifecycleListener;
 import com.veloriastudio.atlas.internal.data.PlayerDataLoader;
 import com.veloriastudio.atlas.internal.data.PlayerDataSaver;
 import com.veloriastudio.atlas.internal.data.persistence.MySqlPlayerDataStorage;
@@ -37,7 +40,6 @@ import com.veloriastudio.atlas.internal.message.DefaultMessageBundleService;
 import com.veloriastudio.atlas.internal.message.DefaultMessageService;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -45,98 +47,127 @@ import java.util.logging.Level;
 public final class AtlasPlugin extends JavaPlugin {
 
     private DatabaseService databaseService;
-
-    private DefaultPlayerDataService playerDataService;
-    private PlayerDataKeyStore playerDataKeyStore;
+    private PlayerDataService playerDataService;
 
     private ConfigService configService;
 
     private MessageService messageService;
-    private MessageBundleService messageBundleService;
     private LocalizedMessages localizedMessages;
-    private CommandService commandService;
+
     private CustomItemRegistry customItemRegistry;
     private DynamicCustomItemService dynamicCustomItemService;
     private CustomItemMuseum customItemMuseum;
 
     @Override
     public void onEnable() {
+        Config config =
+                initializeConfig();
 
-        initializeConfig();
-
-        Database database = initializeDatabase();
+        Database database =
+                initializeDatabase(config);
 
         runMigrations(database);
 
-        initializePlayerData(database);
+        DefaultPlayerDataService defaultPlayerDataService =
+                initializePlayerData(database);
+
         initializeMessages();
         initializeItems(database);
-        initializeListeners();
+
+        initializeListeners(
+                defaultPlayerDataService
+        );
+
         initializeCommands();
 
-        getLogger().info("Atlas has been enabled!");
+        getLogger().info(
+                "Atlas has been enabled!"
+        );
     }
 
     @Override
     public void onDisable() {
-
         flushPlayerData();
         closeDatabases();
 
-        getLogger().info("Atlas has been disabled!");
-    }
-
-    private void initializeConfig() {
-
-        this.configService = new DefaultConfigService(this);
-
-        configService.loadResource("config.yml");
-    }
-
-    private Database initializeDatabase() {
-
-        Config config = configService.loadResource("config.yml");
-
-        String host = config.getString("database.host")
-                .orElseThrow(() ->
-                        new IllegalStateException(
-                                "Missing configuration: database.host"
-                        )
-                );
-
-        int port = config.getInt("database.port")
-                .orElse(3306);
-
-        String databaseName = config.getString("database.name")
-                .orElseThrow(() ->
-                        new IllegalStateException(
-                                "Missing configuration: database.name"
-                        )
-                );
-
-        String username = config.getString("database.username")
-                .orElseThrow(() ->
-                        new IllegalStateException(
-                                "Missing configuration: database.username"
-                        )
-                );
-
-        String password = config.getString("database.password")
-                .orElseThrow(() ->
-                        new IllegalStateException(
-                                "Missing configuration: database.password"
-                        )
-                );
-
-        MySqlConfig mySqlConfig = new MySqlConfig(
-                host,
-                port,
-                databaseName,
-                username,
-                password
+        getLogger().info(
+                "Atlas has been disabled!"
         );
+    }
 
-        this.databaseService = new DefaultDatabaseService();
+    private Config initializeConfig() {
+        this.configService =
+                new DefaultConfigService(this);
+
+        return configService.loadResource(
+                "config.yml"
+        );
+    }
+
+    private Database initializeDatabase(
+            Config config
+    ) {
+        String host =
+                config.getString(
+                                "database.host"
+                        )
+                        .orElseThrow(
+                                () ->
+                                        new IllegalStateException(
+                                                "Missing configuration: database.host"
+                                        )
+                        );
+
+        int port =
+                config.getInt(
+                                "database.port"
+                        )
+                        .orElse(3306);
+
+        String databaseName =
+                config.getString(
+                                "database.name"
+                        )
+                        .orElseThrow(
+                                () ->
+                                        new IllegalStateException(
+                                                "Missing configuration: database.name"
+                                        )
+                        );
+
+        String username =
+                config.getString(
+                                "database.username"
+                        )
+                        .orElseThrow(
+                                () ->
+                                        new IllegalStateException(
+                                                "Missing configuration: database.username"
+                                        )
+                        );
+
+        String password =
+                config.getString(
+                                "database.password"
+                        )
+                        .orElseThrow(
+                                () ->
+                                        new IllegalStateException(
+                                                "Missing configuration: database.password"
+                                        )
+                        );
+
+        MySqlConfig mySqlConfig =
+                new MySqlConfig(
+                        host,
+                        port,
+                        databaseName,
+                        username,
+                        password
+                );
+
+        this.databaseService =
+                new DefaultDatabaseService();
 
         return databaseService.createMySql(
                 "atlas",
@@ -144,18 +175,25 @@ public final class AtlasPlugin extends JavaPlugin {
         );
     }
 
-    private void runMigrations(Database database) {
-
+    private void runMigrations(
+            Database database
+    ) {
         DatabaseMigrationRunner migrationRunner =
-                new DatabaseMigrationRunner(database);
+                new DatabaseMigrationRunner(
+                        database
+                );
 
         try {
             migrationRunner.run(
-                    List.of(new CreatePlayerDataTableMigration(), new CreateCustomItemsTableMigration()
+                    List.of(
+                            new CreatePlayerDataTableMigration(),
+                            new CreateCustomItemsTableMigration()
                     )
             ).join();
 
-            getLogger().info("Database migrations completed");
+            getLogger().info(
+                    "Database migrations completed"
+            );
 
         } catch (Exception exception) {
             throw new IllegalStateException(
@@ -165,12 +203,15 @@ public final class AtlasPlugin extends JavaPlugin {
         }
     }
 
-    private void initializePlayerData(Database database) {
-
+    private DefaultPlayerDataService initializePlayerData(
+            Database database
+    ) {
         MySqlPlayerDataStorage storage =
-                new MySqlPlayerDataStorage(database);
+                new MySqlPlayerDataStorage(
+                        database
+                );
 
-        this.playerDataKeyStore =
+        PlayerDataKeyStore keyStore =
                 new PlayerDataKeyStore();
 
         PlayerDataChangeSerializer serializer =
@@ -185,23 +226,26 @@ public final class AtlasPlugin extends JavaPlugin {
         PlayerDataLoader loader =
                 new PlayerDataLoader(
                         storage,
-                        playerDataKeyStore
+                        keyStore
+                );
+
+        DefaultPlayerDataService service =
+                new DefaultPlayerDataService(
+                        loader,
+                        saver
                 );
 
         this.playerDataService =
-                new DefaultPlayerDataService(
-                        loader,
-                        saver,
-                        Duration.ofMinutes(5)
-                );
+                service;
+
+        return service;
     }
 
     private void initializeMessages() {
-
         this.messageService =
                 new DefaultMessageService();
 
-        this.messageBundleService =
+        MessageBundleService messageBundleService =
                 new DefaultMessageBundleService(
                         configService,
                         messageService
@@ -212,41 +256,93 @@ public final class AtlasPlugin extends JavaPlugin {
                         messageBundleService,
                         "fr",
                         Map.of(
-                                "fr", "messages/fr.yml",
-                                "en", "messages/en.yml"
+                                "fr",
+                                "messages/fr.yml",
+                                "en",
+                                "messages/en.yml"
                         )
                 );
     }
 
-    private void flushPlayerData() {
+    private void initializeItems(
+            Database database
+    ) {
+        this.customItemRegistry =
+                new DefaultCustomItemRegistry(
+                        this
+                );
 
-        if (playerDataService == null) {
-            return;
-        }
+        StoredCustomItemPersistenceService persistence =
+                StoredCustomItemPersistenceService.mysql(
+                        database
+                );
+
+        DefaultDynamicCustomItemService dynamicItems =
+                new DefaultDynamicCustomItemService(
+                        customItemRegistry,
+                        persistence
+                );
+
+        this.dynamicCustomItemService =
+                dynamicItems;
+
+        this.customItemMuseum =
+                new CustomItemMuseum(
+                        customItemRegistry,
+                        dynamicCustomItemService,
+                        this
+                );
 
         try {
-            playerDataService.flushAll().join();
+            dynamicItems.loadStoredItems()
+                    .join();
+
+            getLogger().info(
+                    "Stored custom items loaded: "
+                            + customItemRegistry.all()
+                            .size()
+            );
 
         } catch (Exception exception) {
-            getLogger().log(
-                    Level.SEVERE,
-                    "Failed to flush PlayerData during shutdown",
+            throw new IllegalStateException(
+                    "Failed to load stored custom items",
                     exception
             );
         }
     }
 
-    private void closeDatabases() {
+    private void initializeListeners(
+            DefaultPlayerDataService playerDataService
+    ) {
+        getServer()
+                .getPluginManager()
+                .registerEvents(
+                        new AtlasGuiListener(),
+                        this
+                );
 
-        if (databaseService != null) {
-            databaseService.closeAll();
-        }
+        getServer()
+                .getPluginManager()
+                .registerEvents(
+                        new PlayerDataLifecycleListener(
+                                this,
+                                playerDataService
+                        ),
+                        this
+                );
     }
 
-    public void initializeCommands() {
-        PaperCommandRegistrar registrar = new PaperCommandRegistrar(localizedMessages, getLogger());
+    private void initializeCommands() {
+        PaperCommandRegistrar registrar =
+                new PaperCommandRegistrar(
+                        localizedMessages,
+                        getLogger()
+                );
 
-        this.commandService = new DefaultCommandService(registrar);
+        CommandService commandService =
+                new DefaultCommandService(
+                        registrar
+                );
 
         CustomItemCreationDialog itemCreationDialog =
                 new CustomItemCreationDialog(
@@ -259,35 +355,43 @@ public final class AtlasPlugin extends JavaPlugin {
         commandService.register(
                 this,
                 new CreateDynamicItemCommand(
-                        itemCreationDialog
+                        itemCreationDialog,
+                        localizedMessages
                 )
         );
 
-        commandService.register(this, new MuseumCommand(customItemMuseum, customItemRegistry));
+        commandService.register(
+                this,
+                new MuseumCommand(
+                        customItemMuseum,
+                        customItemRegistry
+                )
+        );
     }
 
-    public void initializeListeners() {
-        getServer().getPluginManager().registerEvents(new AtlasGuiListener(), this);
-    }
+    private void flushPlayerData() {
+        if (playerDataService == null) {
+            return;
+        }
 
-    private void initializeItems(Database database) {
-
-        this.customItemRegistry = new DefaultCustomItemRegistry(this);
-
-        StoredCustomItemPersistenceService persistence = StoredCustomItemPersistenceService.mysql(database);
-
-        DefaultDynamicCustomItemService dynamicItems = new DefaultDynamicCustomItemService(customItemRegistry, persistence);
-
-        this.dynamicCustomItemService = dynamicItems;
-
-        this.customItemMuseum = new CustomItemMuseum(customItemRegistry, dynamicCustomItemService, this, customItemMuseum);
         try {
-            dynamicItems.loadStoredItems().join();
-
-            getLogger().info("Stored custom items loaded: " + customItemRegistry.all().size());
+            playerDataService.flushAll()
+                    .join();
 
         } catch (Exception exception) {
-            throw new IllegalStateException("Failed to load stored custom items", exception);
+            getLogger().log(
+                    Level.SEVERE,
+                    "Failed to flush PlayerData during shutdown",
+                    exception
+            );
         }
+    }
+
+    private void closeDatabases() {
+        if (databaseService == null) {
+            return;
+        }
+
+        databaseService.closeAll();
     }
 }

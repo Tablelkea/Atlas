@@ -25,6 +25,9 @@ public class PlayerDataSaver {
     }
 
     CompletableFuture<Map<PlayerDataKey<?>, DirtyEntry>> save(DefaultPlayerData data) {
+
+        Objects.requireNonNull(data, "data cannot be null");
+
         Map<PlayerDataKey<?>, DirtyEntry> snapshot = data.dirtySnapshot();
 
         if (snapshot.isEmpty()) {

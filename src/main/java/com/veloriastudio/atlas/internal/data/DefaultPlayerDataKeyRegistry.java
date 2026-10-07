@@ -8,7 +8,8 @@ import com.veloriastudio.atlas.api.data.codec.DataCodec;
 
 import java.util.Objects;
 
-public class DefaultPlayerDataKeyRegistry implements PlayerDataKeyRegistry {
+public final class DefaultPlayerDataKeyRegistry
+        implements PlayerDataKeyRegistry {
 
     private final String namespace;
     private final PlayerDataKeyStore keyStore;
@@ -17,70 +18,155 @@ public class DefaultPlayerDataKeyRegistry implements PlayerDataKeyRegistry {
             String namespace,
             PlayerDataKeyStore keyStore
     ) {
+        this.namespace = Objects.requireNonNull(
+                namespace,
+                "namespace cannot be null"
+        );
 
-        this.namespace = Objects.requireNonNull(namespace, "namespace cannot be null");
-        this.keyStore = Objects.requireNonNull(keyStore, "keyStore cannot be null");
+        this.keyStore = Objects.requireNonNull(
+                keyStore,
+                "keyStore cannot be null"
+        );
 
+        /*
+         * Valide immédiatement le namespace plutôt
+         * que d'attendre le premier register(...).
+         */
+        new DataKeyId(
+                namespace,
+                "validation"
+        );
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public <T> PlayerDataKey<T> registerTransient(String name, Class<T> type) {
+    public <T> PlayerDataKey<T> registerTransient(
+            String name,
+            Class<T> type
+    ) {
+        Objects.requireNonNull(
+                type,
+                "type cannot be null"
+        );
 
-        Objects.requireNonNull(name, "name cannot be null");
-        Objects.requireNonNull(type, "type cannot be null");
-
-        DataKeyId key = new DataKeyId(namespace, name);
-
-        DefaultPlayerDataKey<?> existingKey = keyStore.find(key).orElse(null);
-
-        if (existingKey == null) {
-            DefaultPlayerDataKey<T> createdKey = new DefaultPlayerDataKey<>(key, type, DataPersistence.TRANSIENT, null);
-            keyStore.put(createdKey);
-            return createdKey;
-        }
-
-        if (existingKey.type() != type) {
-            throw new IllegalStateException("this key already exist with another type: " + type.getSimpleName());
-        }
-
-        if (existingKey.persistence() != DataPersistence.TRANSIENT) {
-            throw new IllegalStateException("this key already exist with another persistence: " + DataPersistence.PERSISTENT.name());
-        }
-
-        return (DefaultPlayerDataKey<T>) existingKey;
+        return register(
+                name,
+                type,
+                DataPersistence.TRANSIENT,
+                null
+        );
     }
 
     @Override
+    public <T> PlayerDataKey<T> registerPersistent(
+            String name,
+            Class<T> type,
+            DataCodec<T> codec
+    ) {
+        Objects.requireNonNull(
+                type,
+                "type cannot be null"
+        );
+
+        Objects.requireNonNull(
+                codec,
+                "codec cannot be null"
+        );
+
+        return register(
+                name,
+                type,
+                DataPersistence.PERSISTENT,
+                codec
+        );
+    }
+
+    private <T> PlayerDataKey<T> register(
+            String name,
+            Class<T> type,
+            DataPersistence persistence,
+            DataCodec<T> codec
+    ) {
+        Objects.requireNonNull(
+                name,
+                "name cannot be null"
+        );
+
+        DataKeyId id =
+                new DataKeyId(
+                        namespace,
+                        name
+                );
+
+        /*
+         * Plusieurs registries peuvent partager le même
+         * store. Le couple find + put doit donc rester
+         * atomique.
+         */
+        synchronized (keyStore) {
+            DefaultPlayerDataKey<?> existing =
+                    keyStore.find(id)
+                            .orElse(null);
+
+            if (existing != null) {
+                return validateExisting(
+                        existing,
+                        type,
+                        persistence,
+                        codec
+                );
+            }
+
+            DefaultPlayerDataKey<T> created =
+                    new DefaultPlayerDataKey<>(
+                            id,
+                            type,
+                            persistence,
+                            codec
+                    );
+
+            keyStore.put(
+                    created
+            );
+
+            return created;
+        }
+    }
+
     @SuppressWarnings("unchecked")
-    public <T> PlayerDataKey<T> registerPersistent(String name, Class<T> type, DataCodec<T> codec) {
-
-        Objects.requireNonNull(name, "name cannot be null");
-        Objects.requireNonNull(type, "type cannot be null");
-        Objects.requireNonNull(codec, "codec cannot be null");
-
-        DataKeyId key = new DataKeyId(namespace, name);
-
-        DefaultPlayerDataKey<?> existingKey = keyStore.find(key).orElse(null);
-
-        if (existingKey == null) {
-            DefaultPlayerDataKey<T> createdKey = new DefaultPlayerDataKey<>(key, type, DataPersistence.PERSISTENT, codec);
-            keyStore.put(createdKey);
-            return createdKey;
+    private <T> PlayerDataKey<T> validateExisting(
+            DefaultPlayerDataKey<?> existing,
+            Class<T> type,
+            DataPersistence persistence,
+            DataCodec<T> codec
+    ) {
+        if (existing.type() != type) {
+            throw new IllegalStateException(
+                    "player data key "
+                            + existing.id()
+                            + " is already registered with type "
+                            + existing.type().getName()
+            );
         }
 
-        if (existingKey.type() != type) {
-            throw new IllegalStateException("this key already exist with another type: " + type.getSimpleName());
+        if (existing.persistence() != persistence) {
+            throw new IllegalStateException(
+                    "player data key "
+                            + existing.id()
+                            + " is already registered as "
+                            + existing.persistence()
+            );
         }
 
-        if (existingKey.persistence() != DataPersistence.PERSISTENT) {
-            throw new IllegalStateException("this key already exist with another persistence: " + DataPersistence.TRANSIENT.name());
+        if (persistence == DataPersistence.PERSISTENT
+                && existing.codec() != codec) {
+
+            throw new IllegalStateException(
+                    "player data key "
+                            + existing.id()
+                            + " is already registered with another codec"
+            );
         }
 
-        if (existingKey.codec() != codec) {
-            throw new IllegalStateException("this key already exist with another codec");
-        }
-
-        return (DefaultPlayerDataKey<T>) existingKey;
+        return (PlayerDataKey<T>) existing;
     }
 }

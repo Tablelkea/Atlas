@@ -12,8 +12,9 @@ import java.util.Objects;
 
 final class CommandTreeFactory {
 
-    CommandTree create(AtlasCommand command) {
-
+    CommandTree create(
+            AtlasCommand command
+    ) {
         Objects.requireNonNull(
                 command,
                 "command cannot be null"
@@ -21,7 +22,9 @@ final class CommandTreeFactory {
 
         DescribeCommand description =
                 command.getClass()
-                        .getAnnotation(DescribeCommand.class);
+                        .getAnnotation(
+                                DescribeCommand.class
+                        );
 
         if (description == null) {
             throw new IllegalArgumentException(
@@ -52,17 +55,18 @@ final class CommandTreeFactory {
         }
 
         DefaultCommandArguments arguments =
-                new DefaultCommandArguments(root);
+                new DefaultCommandArguments(
+                        root
+                );
 
-        command.arguments(arguments);
+        command.arguments(
+                arguments
+        );
 
-        InternalCommandExecutor executor = context -> command.execute(context);
-
-        arguments.terminal().executor(executor);
-
-        if (arguments.optionalExecutionNode() != null) {
-            arguments.optionalExecutionNode().executor(executor);
-        }
+        installExecutor(
+                arguments,
+                command::execute
+        );
 
         configureSubcommands(
                 command.getClass(),
@@ -86,7 +90,6 @@ final class CommandTreeFactory {
             Class<?> ownerType,
             DefaultCommandBuilder parent
     ) {
-
         Subcommands annotation =
                 ownerType.getAnnotation(
                         Subcommands.class
@@ -110,7 +113,6 @@ final class CommandTreeFactory {
             DefaultCommandBuilder parent,
             Class<? extends AtlasSubcommand> type
     ) {
-
         DescribeSubcommand description =
                 type.getAnnotation(
                         DescribeSubcommand.class
@@ -150,17 +152,17 @@ final class CommandTreeFactory {
             );
         }
 
-        /*
-         * Important :
-         * permissions / playerOnly doivent être définis
-         * AVANT de créer les arguments.
-         */
         DefaultCommandArguments arguments =
-                new DefaultCommandArguments(child);
+                new DefaultCommandArguments(
+                        child
+                );
 
-        subcommand.arguments(arguments);
+        subcommand.arguments(
+                arguments
+        );
 
-        arguments.terminal().executor(
+        installExecutor(
+                arguments,
                 subcommand::execute
         );
 
@@ -170,16 +172,33 @@ final class CommandTreeFactory {
         );
     }
 
+    private void installExecutor(
+            DefaultCommandArguments arguments,
+            InternalCommandExecutor executor
+    ) {
+        arguments.terminal()
+                .executor(
+                        executor
+                );
+
+        DefaultCommandBuilder optionalNode =
+                arguments.optionalExecutionNode();
+
+        if (optionalNode != null) {
+            optionalNode.executor(
+                    executor
+            );
+        }
+    }
+
     private AtlasSubcommand instantiate(
             Class<? extends AtlasSubcommand> type
     ) {
-
         try {
             return type.getDeclaredConstructor()
                     .newInstance();
 
         } catch (ReflectiveOperationException exception) {
-
             throw new IllegalStateException(
                     "Cannot instantiate subcommand "
                             + type.getName()

@@ -27,7 +27,6 @@ final class CommandHelpService {
             String commandName,
             DefaultCommandBuilder root
     ) {
-
         Objects.requireNonNull(
                 commandName,
                 "commandName cannot be null"
@@ -49,12 +48,13 @@ final class CommandHelpService {
                 "Show command help"
         );
 
-        help.executor(context ->
-                sendHelp(
-                        context,
-                        commandName,
-                        root
-                )
+        help.executor(
+                context ->
+                        sendHelp(
+                                context,
+                                commandName,
+                                root
+                        )
         );
     }
 
@@ -63,7 +63,6 @@ final class CommandHelpService {
             String commandName,
             DefaultCommandBuilder root
     ) {
-
         CommandSender sender =
                 context.sender();
 
@@ -94,7 +93,10 @@ final class CommandHelpService {
                 continue;
             }
 
-            if (!isVisible(sender, child)) {
+            if (!isVisible(
+                    sender,
+                    child
+            )) {
                 continue;
             }
 
@@ -132,7 +134,6 @@ final class CommandHelpService {
             CommandSender sender,
             DefaultCommandBuilder builder
     ) {
-
         boolean hasPermissions =
                 builder.permissions()
                         .stream()
@@ -147,7 +148,6 @@ final class CommandHelpService {
     private String argumentUsage(
             DefaultCommandBuilder builder
     ) {
-
         StringBuilder usage =
                 new StringBuilder();
 
@@ -155,16 +155,21 @@ final class CommandHelpService {
                 builder;
 
         while (current.arguments().size() == 1) {
-
             DefaultArgumentNode argument =
                     current.arguments()
                             .values()
                             .iterator()
                             .next();
 
-            usage.append(" <")
-                    .append(argument.name())
-                    .append(">");
+            if (argument.optional()) {
+                usage.append(" [")
+                        .append(argument.name())
+                        .append("]");
+            } else {
+                usage.append(" <")
+                        .append(argument.name())
+                        .append(">");
+            }
 
             current =
                     argument.builder();
@@ -176,10 +181,10 @@ final class CommandHelpService {
     private MessageBundle messagesFor(
             CommandSender sender
     ) {
-
         if (sender instanceof Player player) {
             return localizedMessages.get(
-                    player.locale().getLanguage()
+                    player.locale()
+                            .getLanguage()
             );
         }
 

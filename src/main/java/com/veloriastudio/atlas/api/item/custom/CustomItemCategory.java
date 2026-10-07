@@ -6,7 +6,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
-public record CustomItemCategory(String path) {
+public record CustomItemCategory(
+        String path
+) {
+
+    private static final int MAX_LENGTH = 64;
 
     private static final Pattern PATTERN =
             Pattern.compile(
@@ -14,7 +18,6 @@ public record CustomItemCategory(String path) {
             );
 
     public CustomItemCategory {
-
         Objects.requireNonNull(
                 path,
                 "path cannot be null"
@@ -26,9 +29,18 @@ public record CustomItemCategory(String path) {
             );
         }
 
+        if (path.length() > MAX_LENGTH) {
+            throw new IllegalArgumentException(
+                    "category path cannot exceed "
+                            + MAX_LENGTH
+                            + " characters"
+            );
+        }
+
         if (!PATTERN.matcher(path).matches()) {
             throw new IllegalArgumentException(
-                    "invalid category path: " + path
+                    "invalid category path: "
+                            + path
             );
         }
     }
@@ -36,7 +48,9 @@ public record CustomItemCategory(String path) {
     public static CustomItemCategory of(
             String path
     ) {
-        return new CustomItemCategory(path);
+        return new CustomItemCategory(
+                path
+        );
     }
 
     public List<String> segments() {
@@ -46,12 +60,7 @@ public record CustomItemCategory(String path) {
     }
 
     public String name() {
-
-        List<String> segments =
-                segments();
-
-        return segments.getLast(
-        );
+        return segments().getLast();
     }
 
     public int depth() {

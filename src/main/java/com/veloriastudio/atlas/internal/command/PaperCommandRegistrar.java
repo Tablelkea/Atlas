@@ -9,10 +9,7 @@ import com.veloriastudio.atlas.api.message.LocalizedMessages;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 
-import java.util.Collection;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.logging.Logger;
 
 public final class PaperCommandRegistrar {
@@ -23,7 +20,6 @@ public final class PaperCommandRegistrar {
 
     public PaperCommandRegistrar(LocalizedMessages localizedMessages, Logger logger) {
         Objects.requireNonNull(localizedMessages, "localizedMessages cannot be null");
-
         Objects.requireNonNull(logger, "logger cannot be null");
 
         this.treeFactory = new CommandTreeFactory();

@@ -39,11 +39,26 @@ public final class DatabaseMigrationRunner {
 
         Objects.requireNonNull(migrations, "migrations cannot be null");
 
+        for (DatabaseMigration migration : migrations) {
+            String name = Objects.requireNonNull(
+                    migration.name(),
+                    "migration name cannot be null"
+            );
+
+            if (name.isBlank()) {
+                throw new IllegalArgumentException(
+                        "migration name cannot be blank"
+                );
+            }
+
+
+        }
+
         List<DatabaseMigration> sorted = migrations.stream()
                 .sorted(Comparator.comparingInt(DatabaseMigration::version))
                 .toList();
 
-        validateVersions(sorted);
+        validateMigrations(sorted);
 
         return database.update(CREATE_TABLE_SQL)
                 .thenCompose(ignored ->
@@ -90,7 +105,7 @@ public final class DatabaseMigrationRunner {
         return chain;
     }
 
-    private void validateVersions(
+    private void validateMigrations(
             List<DatabaseMigration> migrations
     ) {
 
@@ -101,6 +116,17 @@ public final class DatabaseMigrationRunner {
             if (migration.version() <= 0) {
                 throw new IllegalArgumentException(
                         "Migration version must be greater than 0"
+                );
+            }
+
+            String name = Objects.requireNonNull(
+                    migration.name(),
+                    "migration name cannot be null"
+            );
+
+            if (name.isBlank()) {
+                throw new IllegalArgumentException(
+                        "migration name cannot be blank"
                 );
             }
 

@@ -71,11 +71,14 @@ public final class ItemData {
             PdcKey<?> key
     ) {
 
-        Objects.requireNonNull(item);
-        Objects.requireNonNull(key);
+        Objects.requireNonNull(item, "item cannot be null");
+        Objects.requireNonNull(key, "key cannot be null");
 
         return item.getPersistentDataContainer()
-                .has(key.key());
+                .has(
+                        key.key(),
+                        key.type()
+                );
     }
 
     public static void remove(
@@ -83,8 +86,8 @@ public final class ItemData {
             PdcKey<?> key
     ) {
 
-        Objects.requireNonNull(item);
-        Objects.requireNonNull(key);
+        Objects.requireNonNull(item, "item cannot be null");
+        Objects.requireNonNull(key, "key cannot be null");
 
         item.editPersistentDataContainer(
                 container ->

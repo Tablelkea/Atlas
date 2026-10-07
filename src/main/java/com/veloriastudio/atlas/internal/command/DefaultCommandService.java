@@ -5,6 +5,8 @@ import com.veloriastudio.atlas.api.command.CommandService;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.plugin.Plugin;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 public final class DefaultCommandService implements CommandService {
@@ -24,4 +26,6 @@ public final class DefaultCommandService implements CommandService {
         owner.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> registrar.register(event.registrar(), command));
 
     }
+
+
 }

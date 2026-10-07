@@ -12,28 +12,67 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-public final class DefaultGui implements Gui {
+public final class DefaultGui
+        implements Gui {
 
     private final Component title;
     private final int rows;
     private final Map<Integer, GuiButton> buttons;
 
-    public DefaultGui(Component title, int rows, Map<Integer, GuiButton> buttons) {
-        this.title = Objects.requireNonNull(title, "title cannot be null");
-        this.rows = rows;
-        this.buttons = Map.copyOf(Objects.requireNonNull(buttons, "buttons cannot be null"));
+    public DefaultGui(
+            Component title,
+            int rows,
+            Map<Integer, GuiButton> buttons
+    ) {
+        this.title = Objects.requireNonNull(
+                title,
+                "title cannot be null"
+        );
 
-        if (rows < 1 || rows > 6) {
-            throw new IllegalArgumentException("rows must be between 1 and 6");
+        if (rows < 1
+                || rows > 6) {
+
+            throw new IllegalArgumentException(
+                    "rows must be between 1 and 6"
+            );
         }
 
-        int maxSlot = rows * 9 - 1;
+        this.rows = rows;
 
-        for (Integer slot : buttons.keySet()) {
-            if (slot < 0 || slot > maxSlot) {
-                throw new IllegalArgumentException("every slot button must be between 0 and " + maxSlot);
+        Objects.requireNonNull(
+                buttons,
+                "buttons cannot be null"
+        );
+
+        int maxSlot =
+                rows * 9 - 1;
+
+        for (Map.Entry<Integer, GuiButton> entry
+                : buttons.entrySet()) {
+
+            Integer slot =
+                    Objects.requireNonNull(
+                            entry.getKey(),
+                            "button slot cannot be null"
+                    );
+
+            Objects.requireNonNull(
+                    entry.getValue(),
+                    "button cannot be null"
+            );
+
+            if (slot < 0
+                    || slot > maxSlot) {
+
+                throw new IllegalArgumentException(
+                        "every button slot must be between 0 and "
+                                + maxSlot
+                );
             }
         }
+
+        this.buttons =
+                Map.copyOf(buttons);
     }
 
     @Override
@@ -47,33 +86,64 @@ public final class DefaultGui implements Gui {
     }
 
     @Override
-    public void open(Player player) {
+    public void open(
+            Player player
+    ) {
+        Objects.requireNonNull(
+                player,
+                "player cannot be null"
+        );
 
-        Objects.requireNonNull(player, "player cannot be null");
+        AtlasGuiHolder holder =
+                new AtlasGuiHolder(
+                        this
+                );
 
-        AtlasGuiHolder holder = new AtlasGuiHolder(this);
+        Inventory inventory =
+                Bukkit.createInventory(
+                        holder,
+                        rows * 9,
+                        title
+                );
 
-        int size = rows * 9;
+        holder.attach(
+                inventory
+        );
 
-        Inventory gui = Bukkit.createInventory(holder, size, title);
+        for (Map.Entry<Integer, GuiButton> entry
+                : buttons.entrySet()) {
 
-        holder.attach(gui);
+            GuiButton button =
+                    entry.getValue();
 
-        for (Map.Entry<Integer, GuiButton> entry : buttons.entrySet()) {
+            ItemStack icon =
+                    Objects.requireNonNull(
+                            button.icon(),
+                            "GuiButton#icon() cannot return null"
+                    );
 
-            ItemStack icon = entry.getValue().icon().clone();
-            int slot = entry.getKey();
-            gui.setItem(slot, icon);
+            if (icon.getType().isAir()) {
+                throw new IllegalStateException(
+                        "GuiButton#icon() cannot return air"
+                );
+            }
 
+            inventory.setItem(
+                    entry.getKey(),
+                    icon.clone()
+            );
         }
 
-        player.openInventory(gui);
-
+        player.openInventory(
+                inventory
+        );
     }
 
-    Optional<GuiButton> button(int slot) {
-
-        return Optional.ofNullable(buttons.get(slot));
-
+    Optional<GuiButton> button(
+            int slot
+    ) {
+        return Optional.ofNullable(
+                buttons.get(slot)
+        );
     }
 }

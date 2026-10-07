@@ -6,8 +6,17 @@ import java.util.concurrent.CompletableFuture;
 
 public interface PlayerDataService {
 
-    Optional<PlayerData> findLoaded(UUID playerId);
+    Optional<PlayerData> findLoaded(
+            UUID playerId
+    );
 
-    CompletableFuture<PlayerData> load(UUID playerId);
+    CompletableFuture<PlayerData> load(
+            UUID playerId
+    );
 
+    CompletableFuture<Void> flush(
+            UUID playerId
+    );
+
+    CompletableFuture<Void> flushAll();
 }

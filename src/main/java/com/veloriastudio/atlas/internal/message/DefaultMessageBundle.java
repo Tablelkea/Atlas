@@ -10,7 +10,7 @@ import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 
 import java.util.Objects;
 
-public class DefaultMessageBundle implements MessageBundle {
+public final class DefaultMessageBundle implements MessageBundle {
 
     private final Config config;
     private final MessageService messageService;
@@ -28,8 +28,13 @@ public class DefaultMessageBundle implements MessageBundle {
     public Component render(String path, TagResolver... resolvers) {
 
         Objects.requireNonNull(path, "path cannot be null");
+        Objects.requireNonNull(resolvers, "resolvers cannot be null");
 
-        String message = config.get(path, String.class)
+        if (path.isBlank()) {
+            throw new IllegalArgumentException("path cannot be blank");
+        }
+
+        String message = config.getString(path)
                 .orElseThrow(() ->
                         new IllegalArgumentException(
                                 "message path does not exist: " + path

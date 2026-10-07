@@ -8,34 +8,40 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public final class DefaultCustomItemRegistry
         implements CustomItemRegistry {
 
-    private final Map<NamespacedKey, CustomItem> items =
+    private final ConcurrentMap<NamespacedKey, CustomItem> items =
             new ConcurrentHashMap<>();
 
     private final PdcKey<String> identityKey;
 
     public DefaultCustomItemRegistry(
-            Plugin atlasPlugin
+            Plugin plugin
     ) {
         Objects.requireNonNull(
-                atlasPlugin,
-                "atlasPlugin cannot be null"
+                plugin,
+                "plugin cannot be null"
         );
 
-        this.identityKey = PdcKey.string(
-                atlasPlugin,
-                "custom_item_id"
-        );
+        this.identityKey =
+                PdcKey.string(
+                        plugin,
+                        "custom_item_id"
+                );
     }
 
     @Override
-    public void register(CustomItem item) {
-
+    public void register(
+            CustomItem item
+    ) {
         Objects.requireNonNull(
                 item,
                 "item cannot be null"
@@ -65,7 +71,6 @@ public final class DefaultCustomItemRegistry
     public Optional<CustomItem> find(
             NamespacedKey id
     ) {
-
         Objects.requireNonNull(
                 id,
                 "id cannot be null"
@@ -80,7 +85,6 @@ public final class DefaultCustomItemRegistry
     public ItemStack create(
             NamespacedKey id
     ) {
-
         Objects.requireNonNull(
                 id,
                 "id cannot be null"
@@ -88,10 +92,11 @@ public final class DefaultCustomItemRegistry
 
         CustomItem customItem =
                 find(id).orElseThrow(
-                        () -> new IllegalArgumentException(
-                                "unknown custom item: "
-                                        + id.asString()
-                        )
+                        () ->
+                                new IllegalArgumentException(
+                                        "unknown custom item: "
+                                                + id.asString()
+                                )
                 );
 
         ItemStack item =
@@ -99,6 +104,13 @@ public final class DefaultCustomItemRegistry
                         customItem.create(),
                         "CustomItem#create() cannot return null"
                 );
+
+        if (item.getType().isAir()) {
+            throw new IllegalStateException(
+                    "CustomItem#create() cannot return air: "
+                            + id.asString()
+            );
+        }
 
         ItemData.set(
                 item,
@@ -113,7 +125,6 @@ public final class DefaultCustomItemRegistry
     public Optional<CustomItem> identify(
             ItemStack item
     ) {
-
         Objects.requireNonNull(
                 item,
                 "item cannot be null"
@@ -146,7 +157,6 @@ public final class DefaultCustomItemRegistry
             ItemStack item,
             NamespacedKey id
     ) {
-
         Objects.requireNonNull(
                 item,
                 "item cannot be null"
@@ -157,17 +167,16 @@ public final class DefaultCustomItemRegistry
                 "id cannot be null"
         );
 
-        return ItemData.get(
-                        item,
-                        identityKey
-                )
-                .map(id.asString()::equals)
+        return identify(item)
+                .map(CustomItem::id)
+                .map(id::equals)
                 .orElse(false);
     }
 
     @Override
-    public void replace(CustomItem item) {
-
+    public void replace(
+            CustomItem item
+    ) {
         Objects.requireNonNull(
                 item,
                 "item cannot be null"
@@ -179,9 +188,13 @@ public final class DefaultCustomItemRegistry
                         "custom item id cannot be null"
                 );
 
-        if (items.replace(id, item) == null) {
+        if (items.replace(
+                id,
+                item
+        ) == null) {
             throw new IllegalArgumentException(
-                    "unknown custom item: " + id.asString()
+                    "unknown custom item: "
+                            + id.asString()
             );
         }
     }
@@ -190,7 +203,6 @@ public final class DefaultCustomItemRegistry
     public Optional<CustomItem> unregister(
             NamespacedKey id
     ) {
-
         Objects.requireNonNull(
                 id,
                 "id cannot be null"
@@ -203,12 +215,13 @@ public final class DefaultCustomItemRegistry
 
     @Override
     public Collection<CustomItem> all() {
-
         return items.values()
                 .stream()
                 .sorted(
                         Comparator.comparing(
-                                item -> item.id().asString()
+                                item ->
+                                        item.id()
+                                                .asString()
                         )
                 )
                 .toList();

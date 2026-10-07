@@ -16,6 +16,7 @@ public final class DefaultMessageService implements MessageService {
     public Component render(String message, TagResolver... resolvers) {
 
         Objects.requireNonNull(message, "message cannot be null");
+        Objects.requireNonNull(resolvers, "resolvers cannot be null");
 
         return miniMessage.deserialize(message, resolvers);
     }

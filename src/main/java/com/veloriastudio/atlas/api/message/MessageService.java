@@ -9,5 +9,4 @@ public interface MessageService {
     Component render(String message, TagResolver... resolvers);
 
     void send(Audience audience, String message, TagResolver... resolvers);
-
 }
