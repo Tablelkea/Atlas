@@ -46,8 +46,8 @@ Atlas suit plusieurs principes d'architecture :
 
 ## Fonctionnalités
 
-| Module | Statut | Description |
-| --- | --- | --- |
+| Module | Statut     | Description |
+| --- |------------| --- |
 | Bootstrap | Implémenté | Maven, lifecycle Paper, initialisation et arrêt des services |
 | Player Data | Implémenté | Données joueur typées, persistantes ou transitoires |
 | Database | Implémenté | MySQL, HikariCP, async, transactions et migrations |
@@ -58,21 +58,21 @@ Atlas suit plusieurs principes d'architecture :
 | Custom Items | Implémenté | Registry, catégories, persistance, création, édition et suppression |
 | GUI | Implémenté | Boutons, contexte de clic, remplissage, bordures et pagination |
 | Dialog | Implémenté | DialogBuilder autour de l'API Dialog de Paper |
-| Scheduler | En cours | Tâches sync/async, délais, répétitions et annulation |
-| Async | En cours | Exécution basée sur `CompletableFuture` |
-| Cooldowns | Prévu | Abstractions de cooldown |
-| Events | Prévu | Event utilities |
-| Players | Prévu | Player utilities |
-| Worlds | Prévu | Mondes, locations et téléportation |
-| Entities | Prévu | Entités et mobs |
-| Recipes | Prévu | Recettes et crafting |
-| Gameplay UI | Prévu | BossBars, scoreboards et UI gameplay |
-| Effects | Prévu | Particules, sons et effets |
-| Serialization | Prévu | Sérialisation et data utilities |
-| Cache | Prévu | Cache et outils de performance |
-| Registries | Prévu | API de registres et d'extensions |
-| Hooks | Prévu | Intégrations externes |
-| Logging | Prévu | Debug, logging et profiling |
+| Scheduler | Implémenté | Tâches sync/async, délais, répétitions et annulation |
+| Async | Implémenté | Exécution basée sur `CompletableFuture` |
+| Cooldowns | Implémenté | Abstractions de cooldown |
+| Events | En cours   | Event utilities |
+| Players | Prévu      | Player utilities |
+| Worlds | Prévu      | Mondes, locations et téléportation |
+| Entities | Prévu      | Entités et mobs |
+| Recipes | Prévu      | Recettes et crafting |
+| Gameplay UI | Prévu      | BossBars, scoreboards et UI gameplay |
+| Effects | Prévu      | Particules, sons et effets |
+| Serialization | Prévu      | Sérialisation et data utilities |
+| Cache | Prévu      | Cache et outils de performance |
+| Registries | Prévu      | API de registres et d'extensions |
+| Hooks | Prévu      | Intégrations externes |
+| Logging | Prévu      | Debug, logging et profiling |
 
 ## Architecture
 
